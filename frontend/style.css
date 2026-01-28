@@ -429,6 +429,34 @@ body {
     animation-delay: -0.16s;
 }
 
+.btn-info {
+    background: #4299e1;
+    color: white;
+}
+
+.btn-info:hover {
+    background: #3182ce;
+    transform: translateY(-2px);
+}
+
+#clearChatBtn {
+    margin-left: 10px;
+    padding: 6px 12px;
+    background-color: #ff4d4f;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+#clearChatBtn:hover {
+    background-color: #d9363e;
+}
+
+
+
+
 @keyframes bounce {
     0%, 80%, 100% {
         transform: scale(0);

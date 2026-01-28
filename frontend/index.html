@@ -19,6 +19,8 @@
                 <span class="status-dot"></span>
                 <span>Ready</span>
             </div>
+            <button id="clearChatBtn" onclick="clearChat()">Clear Chat</button> 
+
         </header>
 
         <div class="main-content">
@@ -30,6 +32,7 @@
                         <i class="fas fa-file-csv"></i>
                         <p>Drop CSV or Excel files here</p>
                         <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+                        <p id="fileInfo">No files Selected</p>
                         <button class="btn" onclick="document.getElementById('fileInput').click()">
                             Browse Files
                         </button>
@@ -51,7 +54,7 @@
                                 <div class="stat-label">Records</div>
                             </div>
                             <div class="stat">
-                                <div class="stat-value" id="totalRevenue">$0</div>
+                                <div class="stat-value" id="totalRevenue">₹0</div>
                                 <div class="stat-label">Revenue</div>
                             </div>
                             <div class="stat">
@@ -68,11 +71,18 @@
                     <button class="btn btn-danger" onclick="clearData()">
                         <i class="fas fa-trash"></i> Clear All Data
                     </button>
+
+                    <!-- Add this button after the "Clear All Data" button -->
+                    <button class="btn btn-info" onclick="generateVisualizations()" id="visualizeBtn">
+                     <i class="fas fa-chart-bar"></i> Generate Charts
+                    </button>
+                    
                 </div>
             </div>
 
             <!-- Right Panel - Chat Interface -->
             <div class="right-panel">
+                
                 <div class="card chat-card">
                     <h2><i class="fas fa-robot"></i> Sales Assistant</h2>
                     <p class="subtitle">Ask questions about your sales data</p>

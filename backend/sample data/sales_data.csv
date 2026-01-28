@@ -1,0 +1,11 @@
+date,region,product,revenue,customer,pipeline_stage
+2024-01-15,North America,Product A,50000,Company X,Closed Won
+2024-01-20,Europe,Product B,75000,Company Y,Negotiation
+2024-02-10,Asia,Product C,30000,Company Z,Proposal
+2024-02-25,North America,Product A,45000,Company W,Closed Won
+2024-03-05,South India,Product B,60000,Company V,Closed Lost
+2024-03-15,Europe,Product C,80000,Company U,Closed Won
+2024-04-01,South India,Product A,55000,Company T,Closed Won
+2024-04-15,North America,Product B,70000,Company S,Negotiation
+2024-05-01,Asia,Product C,40000,Company R,Proposal
+2024-05-20,Europe,Product A,90000,Company Q,Closed Won

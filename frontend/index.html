@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Sales Analytics</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-chart-line"></i>
+                <h1>Simple Sales Analytics</h1>
+            </div>
+            <div class="status" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span>Ready</span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Left Panel - Data Upload -->
+            <div class="left-panel">
+                <div class="card">
+                    <h2><i class="fas fa-upload"></i> Upload Data</h2>
+                    <div class="upload-box" id="uploadBox">
+                        <i class="fas fa-file-csv"></i>
+                        <p>Drop CSV or Excel files here</p>
+                        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+                        <button class="btn" onclick="document.getElementById('fileInput').click()">
+                            Browse Files
+                        </button>
+                    </div>
+                    
+                    <div class="file-info" id="fileInfo">
+                        No files selected
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="uploadFile()" id="uploadBtn">
+                        <i class="fas fa-cloud-upload-alt"></i> Process Data
+                    </button>
+                    
+                    <div class="data-stats" id="dataStats">
+                        <h3><i class="fas fa-database"></i> Data Overview</h3>
+                        <div class="stats-grid">
+                            <div class="stat">
+                                <div class="stat-value" id="totalRecords">0</div>
+                                <div class="stat-label">Records</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" id="totalRevenue">$0</div>
+                                <div class="stat-label">Revenue</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" id="regionsCount">0</div>
+                                <div class="stat-label">Regions</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" id="productsCount">0</div>
+                                <div class="stat-label">Products</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-danger" onclick="clearData()">
+                        <i class="fas fa-trash"></i> Clear All Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel - Chat Interface -->
+            <div class="right-panel">
+                <div class="card chat-card">
+                    <h2><i class="fas fa-robot"></i> Sales Assistant</h2>
+                    <p class="subtitle">Ask questions about your sales data</p>
+                    
+                    <!-- Chat Messages -->
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message bot">
+                            <div class="avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="content">
+                                <div class="name">Sales Assistant</div>
+                                <p>Hello! I can help you analyze your sales data.</p>
+                                <p>To get started:</p>
+                                <ol>
+                                    <li>Upload your sales data (CSV or Excel) using the left panel</li>
+                                    <li>Then ask me questions like:</li>
+                                    <ul>
+                                        <li>"What is our total revenue?"</li>
+                                        <li>"Show sales by region"</li>
+                                        <li>"What are the top products?"</li>
+                                        <li>"Any trends in the data?"</li>
+                                    </ul>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Questions -->
+                    <div class="quick-questions">
+                        <p>Try asking:</p>
+                        <div class="question-chips">
+                            <button class="chip" onclick="askQuestion('What is the total revenue?')">
+                                Total Revenue
+                            </button>
+                            <button class="chip" onclick="askQuestion('Which region has highest sales?')">
+                                Top Region
+                            </button>
+                            <button class="chip" onclick="askQuestion('Show product performance')">
+                                Product Performance
+                            </button>
+                            <button class="chip" onclick="askQuestion('Any sales trends?')">
+                                Sales Trends
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Input Area -->
+                    <div class="input-area">
+                        <input 
+                            type="text" 
+                            id="userInput" 
+                            placeholder="Type your question here..."
+                            onkeypress="handleKeyPress(event)"
+                        >
+                        <button class="btn btn-primary" onclick="sendMessage()">
+                            <i class="fas fa-paper-plane"></i> Ask
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Simple Sales Analytics Agent • No Database Required • Uses In-Memory Storage</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

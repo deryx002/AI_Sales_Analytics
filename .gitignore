@@ -38,7 +38,7 @@ build/
 .cache/
 
 # ===============================
-# Data files (optional but recommended)
+# Data files
 # ===============================
 *.csv
 *.xlsx

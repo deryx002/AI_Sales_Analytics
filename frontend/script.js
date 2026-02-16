@@ -12,13 +12,40 @@ const statusDot = document.querySelector('.status-dot');
 
 // State
 let selectedFile = null;
+const productTrendCharts = {};
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     checkBackendStatus();
     loadDataSummary();
+    loadSampleFiles();
+    initThemeToggle();
+    initGoTopButton();
     setupEventListeners();
 });
+
+// Go to Top button (mobile)
+function initGoTopButton() {
+    const btn = document.getElementById('goTopBtn');
+    if (!btn) return;
+    window.addEventListener('scroll', () => {
+        btn.classList.toggle('visible', window.scrollY > 300);
+    }, { passive: true });
+}
+
+// Theme Toggle
+function initThemeToggle() {
+    const toggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') {
+        document.body.classList.add('dark-theme');
+        toggle.checked = true;
+    }
+    toggle.addEventListener('change', () => {
+        document.body.classList.toggle('dark-theme', toggle.checked);
+        localStorage.setItem('theme', toggle.checked ? 'dark' : 'light');
+    });
+}
 
 // Event Listeners
 function setupEventListeners() {
@@ -112,6 +139,70 @@ function clearChat() {
     addMessage("👋 Chat cleared. Ask a new question!", "bot");
 }
 
+// Sample Data Files
+async function loadSampleFiles() {
+    const sampleList = document.getElementById('sampleList');
+    try {
+        const response = await fetch(`${API_BASE_URL}/samples`);
+        const data = await response.json();
+
+        if (!response.ok || !data.samples || data.samples.length === 0) {
+            sampleList.innerHTML = '<p class="sample-loading">No sample files available</p>';
+            return;
+        }
+
+        sampleList.innerHTML = '';
+        data.samples.forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'sample-item';
+            item.onclick = () => loadSampleData(file.name, item);
+            item.innerHTML = `
+                <div class="sample-item-info">
+                    <i class="fas fa-file-csv"></i>
+                    <div>
+                        <div class="sample-item-name">${file.name}</div>
+                        <div class="sample-item-size">${formatBytes(file.size)}</div>
+                    </div>
+                </div>
+                <button class="sample-load-btn" onclick="event.stopPropagation(); loadSampleData('${file.name}', this.closest('.sample-item'))">
+                    <i class="fas fa-play"></i> Load
+                </button>
+            `;
+            sampleList.appendChild(item);
+        });
+    } catch (error) {
+        sampleList.innerHTML = '<p class="sample-loading">Could not load samples</p>';
+    }
+}
+
+async function loadSampleData(filename, itemEl) {
+    const btn = itemEl.querySelector('.sample-load-btn');
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/samples/${encodeURIComponent(filename)}`);
+        const result = await response.json();
+
+        if (response.ok) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Loaded';
+            btn.style.background = '#48bb78';
+
+            addMessage(`✅ Sample file "${filename}" loaded with ${result.records_added} records. You can now ask questions about this data.`, 'bot');
+            loadDataSummary();
+        } else {
+            btn.innerHTML = '<i class="fas fa-times"></i> Error';
+            btn.style.background = '#f56565';
+            setTimeout(() => { btn.innerHTML = originalHTML; btn.style.background = ''; btn.disabled = false; }, 2000);
+        }
+    } catch (error) {
+        btn.innerHTML = '<i class="fas fa-times"></i> Error';
+        btn.style.background = '#f56565';
+        setTimeout(() => { btn.innerHTML = originalHTML; btn.style.background = ''; btn.disabled = false; }, 2000);
+    }
+}
+
 
 
 // Upload file
@@ -173,19 +264,313 @@ async function loadDataSummary() {
         
         if (response.ok) {
             updateStatsDisplay(summary);
+            renderProductInsights(summary.product_insights);
         }
     } catch (error) {
         console.error('Error loading data summary:', error);
     }
 }
 
-function updateStatsDisplay(summary) {
-    document.getElementById('totalRecords').textContent = summary.total_records || 0;
-    document.getElementById('totalRevenue').textContent = summary.revenue ? 
-        `$${summary.revenue.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '$0';
-    document.getElementById('regionsCount').textContent = summary.categories ? summary.categories.regions.length : 0;
-    document.getElementById('productsCount').textContent = summary.categories ? summary.categories.products.length : 0;
+function formatINRShort(value) {
+    if (!value || isNaN(value)) return "₹0";
+
+    if (value >= 10000000) {
+        return `₹${(value / 10000000).toFixed(2)} Crore`;
+    }
+    if (value >= 100000) {
+        return `₹${(value / 100000).toFixed(2)} Lakh`;
+    }
+    if (value >= 1000) {
+        return `₹${(value / 1000).toFixed(2)} Thousand`;
+    }
+    return `₹${value}`;
 }
+
+function formatProductMetric(value, metricKey) {
+    if (value == null || isNaN(value)) return 'N/A';
+    if (metricKey === 'quantity') return `${Math.round(value)} units`;
+    return formatINRShort(value);
+}
+
+function renderProductInsights(productInsights) {
+    const section = document.getElementById('salesInsightsSection');
+    if (!section) return;
+
+    if (!productInsights || productInsights.available === false) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'grid';
+
+    const metricKey = productInsights.metric_used || 'revenue';
+    const predicted = productInsights.predicted_highest_future_sales || {};
+
+    document.getElementById('mostSoldProduct').textContent = productInsights.most_sold_product?.name || 'N/A';
+    document.getElementById('mostSoldMeta').textContent =
+        `${productInsights.metric_label || 'Metric'}: ${formatProductMetric(productInsights.most_sold_product?.value, metricKey)}`;
+
+    document.getElementById('leastSoldProduct').textContent = productInsights.least_sold_product?.name || 'N/A';
+    document.getElementById('leastSoldMeta').textContent =
+        `${productInsights.metric_label || 'Metric'}: ${formatProductMetric(productInsights.least_sold_product?.value, metricKey)}`;
+
+    document.getElementById('futureTopProduct').textContent = predicted.name || 'N/A';
+    document.getElementById('futureTopMeta').textContent =
+        `Projected Revenue: ${formatINRShort(predicted.projected_revenue || 0)} • Confidence: ${predicted.confidence || 'N/A'}`;
+
+    const reasonsContainer = document.getElementById('futureTopReasons');
+    if (reasonsContainer) {
+        reasonsContainer.innerHTML = '';
+        const reasons = Array.isArray(predicted.reasons) ? predicted.reasons.slice(0, 3) : [];
+        if (reasons.length === 0) {
+            const li = document.createElement('li');
+            li.textContent = 'Not enough trend signals to generate reasons.';
+            reasonsContainer.appendChild(li);
+        } else {
+            reasons.forEach((reason) => {
+                const li = document.createElement('li');
+                li.textContent = reason;
+                reasonsContainer.appendChild(li);
+            });
+        }
+    }
+
+    renderProductTrendChart(
+        'mostProductTrendChart',
+        productInsights.most_sold_trend,
+        productInsights.most_sold_product?.name || 'Most Sold Product',
+        '#2b6cb0'
+    );
+
+    renderProductTrendChart(
+        'leastProductTrendChart',
+        productInsights.least_sold_trend,
+        productInsights.least_sold_product?.name || 'Least Sold Product',
+        '#d53f8c'
+    );
+}
+
+function renderProductTrendChart(canvasId, trendData, label, lineColor) {
+    if (typeof Chart === 'undefined') return;
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const points = trendData && Array.isArray(trendData.points) ? trendData.points : [];
+    const labels = points.map((point) => point.x);
+    const values = points.map((point) => point.y);
+
+    const importantIndices = new Set();
+    if (values.length > 0) {
+        importantIndices.add(0);
+        importantIndices.add(values.length - 1);
+    }
+
+    for (let index = 1; index < values.length - 1; index += 1) {
+        const prev = values[index - 1];
+        const current = values[index];
+        const next = values[index + 1];
+
+        const isPeak = current > prev && current >= next;
+        const isValley = current < prev && current <= next;
+
+        if (isPeak || isValley) {
+            importantIndices.add(index);
+        }
+    }
+
+    if (values.length >= 2) {
+        const maxValue = Math.max(...values);
+        const minValue = Math.min(...values);
+        importantIndices.add(values.indexOf(maxValue));
+        importantIndices.add(values.indexOf(minValue));
+    }
+
+    if (productTrendCharts[canvasId]) {
+        productTrendCharts[canvasId].destroy();
+        productTrendCharts[canvasId] = null;
+    }
+
+    if (values.length < 2) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+    }
+
+    const metricType = trendData?.metric || 'revenue';
+    const range = Math.max(...values) - Math.min(...values);
+    const flatThreshold = Math.max(range * 0.05, 1);
+
+    const getSegmentPalette = (context) => {
+        const startValue = context.p0.parsed.y;
+        const endValue = context.p1.parsed.y;
+        const diff = endValue - startValue;
+
+        if (Math.abs(diff) <= flatThreshold) {
+            return {
+                border: '#d69e2e',
+                fill: 'rgba(214, 158, 46, 0.20)'
+            };
+        }
+
+        if (diff > 0) {
+            return {
+                border: '#38a169',
+                fill: 'rgba(56, 161, 105, 0.20)'
+            };
+        }
+
+        return {
+            border: '#e53e3e',
+            fill: 'rgba(229, 62, 62, 0.20)'
+        };
+    };
+
+    productTrendCharts[canvasId] = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label,
+                    data: values,
+                    borderColor: lineColor,
+                    backgroundColor: `${lineColor}33`,
+                    fill: true,
+                    tension: 0.3,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    segment: {
+                        borderColor: (context) => getSegmentPalette(context).border,
+                        backgroundColor: (context) => getSegmentPalette(context).fill
+                    }
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        title: (tooltipItems) => tooltipItems[0]?.label || '',
+                        label: (tooltipItem) => {
+                            const value = tooltipItem.raw;
+                            if (metricType === 'quantity') {
+                                return `Units: ${Math.round(value)}`;
+                            }
+                            return `Revenue: ${formatINRShort(value)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        maxTicksLimit: 8,
+                        color: '#718096',
+                        callback: (tickValue, index) => {
+                            if (!importantIndices.has(index)) return '';
+                            const raw = labels[index] || '';
+                            return raw;
+                        }
+                    },
+                    grid: { display: false }
+                },
+                y: {
+                    ticks: {
+                        maxTicksLimit: 4,
+                        color: '#718096',
+                        callback: (value) => metricType === 'quantity'
+                            ? Math.round(value)
+                            : formatINRShort(value)
+                    },
+                    grid: { color: 'rgba(113, 128, 150, 0.2)' }
+                }
+            }
+        }
+    });
+}
+
+
+function updateStatsDisplay(summary) { 
+    const totalRecordsEl = document.getElementById('totalRecords');
+    const totalRevenueEl = document.getElementById('totalRevenue');
+    const regionsCountEl = document.getElementById('regionsCount');
+    const productsCountEl = document.getElementById('productsCount');
+
+    const totalRecordsLabelEl = document.getElementById('totalRecordsLabel');
+    const totalRevenueLabelEl = document.getElementById('totalRevenueLabel');
+    const regionsCountLabelEl = document.getElementById('regionsCountLabel');
+    const productsCountLabelEl = document.getElementById('productsCountLabel');
+
+    totalRecordsLabelEl.textContent = 'Records';
+    totalRevenueLabelEl.textContent = 'Revenue';
+    regionsCountLabelEl.textContent = 'Regions';
+    productsCountLabelEl.textContent = 'Products';
+
+    const hasDynamicStats = summary.dynamic_stats && Array.isArray(summary.dynamic_stats);
+    if (hasDynamicStats) {
+        const statsById = Object.fromEntries(
+            summary.dynamic_stats.map((entry) => [entry.id, entry])
+        );
+
+        const recordsStat = statsById.records;
+        totalRecordsEl.textContent = recordsStat && recordsStat.value != null
+            ? recordsStat.value
+            : (summary.total_records || 0);
+
+        const revenueStat = statsById.revenue;
+        if (revenueStat && revenueStat.available === false) {
+            totalRevenueEl.textContent = 'N/A';
+            totalRevenueLabelEl.textContent = 'Revenue (Not in data)';
+        } else {
+            const revenueValue = revenueStat && revenueStat.value != null
+                ? revenueStat.value
+                : (summary.revenue ? summary.revenue.total : 0);
+            totalRevenueEl.textContent = formatINRShort(revenueValue || 0);
+        }
+
+        const regionsStat = statsById.regions;
+        if (regionsStat && regionsStat.available === false) {
+            regionsCountEl.textContent = 'N/A';
+            regionsCountLabelEl.textContent = (regionsStat.label || 'Regions') + ' (Not in data)';
+        } else {
+            regionsCountLabelEl.textContent = regionsStat?.label || 'Regions';
+            const regionsValue = regionsStat && regionsStat.value != null
+                ? regionsStat.value
+                : (summary.categories ? summary.categories.regions.length : 0);
+            regionsCountEl.textContent = regionsValue;
+        }
+
+        const productsStat = statsById.products;
+        if (productsStat && productsStat.available === false) {
+            productsCountEl.textContent = 'N/A';
+            productsCountLabelEl.textContent = (productsStat.label || 'Products') + ' (Not in data)';
+        } else {
+            productsCountLabelEl.textContent = productsStat?.label || 'Products';
+            const productsValue = productsStat && productsStat.value != null
+                ? productsStat.value
+                : (summary.categories ? summary.categories.products.length : 0);
+            productsCountEl.textContent = productsValue;
+        }
+
+        return;
+    }
+
+    totalRecordsEl.textContent = summary.total_records || 0;
+    totalRevenueEl.textContent = summary.revenue ? formatINRShort(summary.revenue.total) : '₹0';
+    regionsCountEl.textContent = summary.categories ? summary.categories.regions.length : 0;
+    productsCountEl.textContent = summary.categories ? summary.categories.products.length : 0;
+}
+
 
 // Clear all data
 async function clearData() {
@@ -204,8 +589,15 @@ async function clearData() {
             updateStatsDisplay({
                 total_records: 0,
                 revenue: { total: 0 },
-                categories: { regions: [], products: [] }
+                categories: { regions: [], products: [] },
+                dynamic_stats: [
+                    { id: 'records', label: 'Records', value: 0, type: 'count' },
+                    { id: 'revenue', label: 'Revenue', value: null, type: 'currency', available: false },
+                    { id: 'regions', label: 'Regions', value: null, type: 'count', available: false },
+                    { id: 'products', label: 'Products', value: null, type: 'count', available: false }
+                ]
             });
+            renderProductInsights(null);
             
             // Add message to chat
             addMessage('All data has been cleared. You can upload new files to start fresh.', 'bot');
@@ -254,14 +646,8 @@ async function sendMessage() {
             
             // Update stats if they changed
             if (result.data_summary) {
-                updateStatsDisplay({
-                    total_records: result.data_summary.total_records,
-                    revenue: { total: result.data_summary.total_revenue },
-                    categories: { 
-                        regions: Array(result.data_summary.regions_count || 0),
-                        products: Array(result.data_summary.products_count || 0)
-                    }
-                });
+                updateStatsDisplay(result.data_summary);
+                renderProductInsights(result.data_summary.product_insights);
             }
         } else {
             addMessage(`Error: ${result.error}`, 'bot');
@@ -611,6 +997,27 @@ function addChartStyles() {
             
             .chart-modal-content {
                 width: 95%;
+                max-height: 85vh;
+            }
+
+            .chart-image {
+                height: 160px;
+            }
+
+            .chart-modal-body {
+                padding: 12px;
+            }
+
+            .full-chart-image {
+                max-height: 50vh;
+            }
+
+            .chart-card {
+                padding: 10px;
+            }
+
+            .chart-card h4 {
+                font-size: 13px;
             }
         }
     `;
@@ -659,14 +1066,8 @@ async function sendMessage() {
             
             // Update stats
             if (result.data_summary) {
-                updateStatsDisplay({
-                    total_records: result.data_summary.total_records,
-                    revenue: { total: result.data_summary.total_revenue },
-                    categories: { 
-                        regions: Array(result.data_summary.regions_count || 0),
-                        products: Array(result.data_summary.products_count || 0)
-                    }
-                });
+                updateStatsDisplay(result.data_summary);
+                renderProductInsights(result.data_summary.product_insights);
             }
         } else {
             addMessage(`Error: ${result.error}`, 'bot');
@@ -676,6 +1077,19 @@ async function sendMessage() {
         addMessage('Cannot connect to the backend server. Make sure it is running on port 5000.', 'bot');
     }
 }
+
+function formatINR(value) {
+    if (value >= 10000000) {
+        return `₹${(value / 10000000).toFixed(2)} Crore`;
+    } else if (value >= 100000) {
+        return `₹${(value / 100000).toFixed(2)} Lakh`;
+    } else if (value >= 1000) {
+        return `₹${(value / 1000).toFixed(2)} Thousand`;
+    } else {
+        return `₹${value}`;
+    }
+}
+
 
 // Add this function to script.js
 async function generateVisualizations() {

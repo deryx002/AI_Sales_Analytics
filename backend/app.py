@@ -3,38 +3,137 @@ from flask_cors import CORS
 import os
 from dotenv import load_dotenv
 import json
-import google.genai as genai  # CHANGED: New import
-from google.genai import types  # NEW: For model configuration
+import google.genai as genai
+from google.genai import types 
 import pandas as pd
 import io
 from datetime import datetime
 from visualization import SalesVisualizer
 
-# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# Configure Google AI with NEW API
 api_key = os.getenv('GOOGLE_API_KEY')
 if not api_key:
     print("ERROR: GOOGLE_API_KEY not found in .env file")
     print("Please add your API key to the .env file:")
     print("GOOGLE_API_KEY=your_api_key_here")
 
-# Initialize Google AI client
 client = genai.Client(api_key=api_key)
 
-# Initialize model - using the new syntax
-model_name = "gemini-2.5-flash"  # or "gemini-1.5-pro"
+model_name = "gemini-2.5-flash"
 
-# Initialize visualizer
 visualizer = SalesVisualizer()
 
-# In-memory storage
 sales_data = []
 file_history = []
+
+COLUMN_ALIASES = {
+    'revenue': [
+        'revenue', 'sales', 'sale', 'sales_amount', 'sale_amount', 'amount',
+        'total_sales', 'total_amount', 'total', 'order_value', 'order_amount', 'gmv',
+        'turnover', 'income', 'net_sales', 'gross_sales'
+    ],
+    'price': [
+        'price', 'unit_price', 'unitprice', 'selling_price', 'final_price',
+        'cost', 'mrp', 'rate', 'item_price'
+    ],
+    'region': [
+        'region', 'area', 'territory', 'zone', 'location', 'geo', 'geography',
+        'market', 'state', 'country', 'city', 'branch',
+        'customer_location', 'customer_city', 'customer_state', 'customer_country',
+        'ship_to', 'ship_city', 'ship_state', 'shipping_location',
+        'billing_city', 'billing_state', 'store_location', 'store_city'
+    ],
+    'product': [
+        'product', 'product_name', 'item', 'item_name', 'sku', 'sku_name',
+        'product_id', 'product_title', 'model'
+    ],
+    'date': [
+        'date', 'order_date', 'sale_date', 'transaction_date', 'invoice_date',
+        'created_at', 'created_date', 'timestamp', 'month', 'year_month'
+    ],
+    'customer': [
+        'customer', 'customer_name', 'client', 'client_name', 'buyer',
+        'account', 'company', 'customer_id'
+    ],
+    'quantity': [
+        'quantity', 'qty', 'units', 'unit_sold', 'units_sold', 'volume'
+    ],
+    'pipeline_stage': [
+        'pipeline_stage', 'stage', 'status', 'deal_stage', 'sales_stage'
+    ]
+}
+
+
+def normalize_column_key(name):
+    return str(name).strip().lower().replace(' ', '_').replace('-', '_')
+
+
+def get_canonical_name(column_name):
+    key = normalize_column_key(column_name)
+    for canonical, aliases in COLUMN_ALIASES.items():
+        if key == canonical or key in aliases:
+            return canonical
+    return key
+
+
+def make_unique_columns(columns):
+    seen = {}
+    unique_cols = []
+    for col in columns:
+        if col not in seen:
+            seen[col] = 0
+            unique_cols.append(col)
+            continue
+        seen[col] += 1
+        unique_cols.append(f"{col}_{seen[col]}")
+    return unique_cols
+
+
+# Stores original column name → canonical name mapping (set during normalize)
+_original_column_map = {}
+
+
+def normalize_dataframe(df):
+    global _original_column_map
+    raw_cols = [str(col).strip() for col in df.columns]
+    df.columns = raw_cols
+    canonical_cols = [get_canonical_name(col) for col in raw_cols]
+
+    # Remember original name for each canonical name (first occurrence wins)
+    for raw, canon in zip(raw_cols, canonical_cols):
+        if canon not in _original_column_map:
+            _original_column_map[canon] = raw
+
+    df.columns = make_unique_columns(canonical_cols)
+
+    for col in df.columns:
+        if str(df[col].dtype) == 'object':
+            df[col] = df[col].astype(str).str.strip()
+
+    # Derive revenue = price × quantity when no explicit revenue column exists
+    if 'revenue' not in df.columns and 'price' in df.columns and 'quantity' in df.columns:
+        try:
+            price_numeric = pd.to_numeric(
+                df['price'].astype(str).str.replace(r'[$₹,]', '', regex=True),
+                errors='coerce'
+            )
+            quantity_numeric = pd.to_numeric(df['quantity'], errors='coerce')
+            df['revenue'] = (price_numeric * quantity_numeric).fillna(0)
+        except Exception:
+            pass
+
+    return df
+
+
+def first_matching_key(data_dict, canonical_name):
+    for key in data_dict.keys():
+        if get_canonical_name(key) == canonical_name:
+            return key
+    return None
 
 def process_csv(file_content):
     """Process CSV file content"""
@@ -47,6 +146,8 @@ def process_csv(file_content):
                 continue
         else:
             df = pd.read_csv(io.StringIO(file_content.decode('utf-8', errors='ignore')))
+
+        df = normalize_dataframe(df)
         
         records = []
         
@@ -69,6 +170,9 @@ def process_excel(file_content):
     """Process Excel file content"""
     try:
         df = pd.read_excel(io.BytesIO(file_content))
+
+        df = normalize_dataframe(df)
+        
         records = []
         
         for _, row in df.iterrows():
@@ -86,6 +190,30 @@ def process_excel(file_content):
         print(f"Error processing Excel: {str(e)}")
         return []
 
+def _friendly_label(canonical_name, fallback):
+    """Derive a user-friendly label from the original column name."""
+    original = _original_column_map.get(canonical_name)
+    if not original:
+        return fallback
+    # Title-case the original header, e.g. 'Customer Location' → 'Locations'
+    clean = original.replace('_', ' ').strip().title()
+    # Map common originals to concise plural labels
+    label_map = {
+        'location': 'Locations', 'customer_location': 'Locations',
+        'city': 'Cities', 'state': 'States', 'country': 'Countries',
+        'branch': 'Branches', 'zone': 'Zones', 'area': 'Areas',
+        'territory': 'Territories', 'market': 'Markets',
+        'geography': 'Geographies', 'geo': 'Geographies',
+        'region': 'Regions',
+    }
+    key = normalize_column_key(original)
+    # Check if any label_map key is contained in the normalized name
+    for pattern, label in label_map.items():
+        if pattern in key:
+            return label
+    return fallback
+
+
 def extract_sales_insights(data):
     """Extract basic insights from sales data"""
     insights = {
@@ -95,7 +223,15 @@ def extract_sales_insights(data):
         'products': set(),
         'time_periods': set(),
         'record_count': len(data),
-        'columns': set()
+        'columns': set(),
+        'metrics_available': {
+            'revenue': False,
+            'region': False,
+            'product': False,
+            'date': False
+        },
+        'region_label': _friendly_label('region', 'Regions'),
+        'product_label': _friendly_label('product', 'Products'),
     }
     
     revenue_values = []
@@ -107,37 +243,59 @@ def extract_sales_insights(data):
             # Track columns
             insights['columns'].update(data_dict.keys())
             
-            # Extract revenue
-            if 'revenue' in data_dict:
+            # Extract revenue (alias-aware)
+            revenue_key = first_matching_key(data_dict, 'revenue')
+            
+            if revenue_key:
                 try:
-                    rev_value = str(data_dict['revenue'])
-                    rev_value = rev_value.replace('$', '').replace(',', '').strip()
-                    if rev_value:
+                    rev_value = str(data_dict[revenue_key])
+                    rev_value = rev_value.replace('$', '').replace(',', '').replace('₹', '').strip()
+                    if rev_value and rev_value.lower() != 'nan':
                         rev = float(rev_value)
                         revenue_values.append(rev)
+                        insights['metrics_available']['revenue'] = True
                 except:
                     pass
+            else:
+                # Fallback: derive revenue = price × quantity when explicit revenue is absent
+                price_key = first_matching_key(data_dict, 'price')
+                quantity_key = first_matching_key(data_dict, 'quantity')
+
+                if price_key and quantity_key:
+                    try:
+                        price_val = to_float(data_dict.get(price_key))
+                        quantity_val = to_float(data_dict.get(quantity_key))
+                        if price_val is not None and quantity_val is not None:
+                            revenue_values.append(price_val * quantity_val)
+                            insights['metrics_available']['revenue'] = True
+                    except:
+                        pass
             
-            # Extract region
-            if 'region' in data_dict:
-                region_value = str(data_dict['region']).strip()
-                if region_value:
+            # Extract region (alias-aware)
+            region_key = first_matching_key(data_dict, 'region')
+            
+            if region_key:
+                region_value = str(data_dict[region_key]).strip()
+                if region_value and region_value.lower() != 'nan':
                     insights['regions'].add(region_value)
+                    insights['metrics_available']['region'] = True
             
-            # Extract product
-            if 'product' in data_dict:
-                product_value = str(data_dict['product']).strip()
-                if product_value:
+            # Extract product (alias-aware)
+            product_key = first_matching_key(data_dict, 'product')
+            
+            if product_key:
+                product_value = str(data_dict[product_key]).strip()
+                if product_value and product_value.lower() != 'nan':
                     insights['products'].add(product_value)
+                    insights['metrics_available']['product'] = True
             
             # Extract date/time
-            date_fields = ['date', 'Date', 'DATE', 'transaction_date', 'sale_date']
-            for field in date_fields:
-                if field in data_dict:
-                    date_value = str(data_dict[field]).strip()
-                    if date_value:
-                        insights['time_periods'].add(date_value)
-                        break
+            date_key = first_matching_key(data_dict, 'date')
+            if date_key:
+                date_value = str(data_dict[date_key]).strip()
+                if date_value and date_value.lower() != 'nan':
+                    insights['time_periods'].add(date_value)
+                    insights['metrics_available']['date'] = True
     
     if revenue_values:
         insights['total_revenue'] = sum(revenue_values)
@@ -150,6 +308,281 @@ def extract_sales_insights(data):
     insights['columns'] = list(insights['columns'])
     
     return insights
+
+
+def to_float(value):
+    try:
+        cleaned = str(value).replace('$', '').replace(',', '').replace('₹', '').strip()
+        if not cleaned or cleaned.lower() == 'nan':
+            return None
+        return float(cleaned)
+    except:
+        return None
+
+
+def forecast_next_value(values):
+    n = len(values)
+    if n < 3:
+        return None
+
+    x_mean = (n - 1) / 2
+    y_mean = sum(values) / n
+
+    numerator = 0
+    denominator = 0
+    for i, y in enumerate(values):
+        dx = i - x_mean
+        numerator += dx * (y - y_mean)
+        denominator += dx * dx
+
+    if denominator == 0:
+        return values[-1]
+
+    slope = numerator / denominator
+    intercept = y_mean - slope * x_mean
+    next_value = intercept + slope * n
+    return max(0, next_value)
+
+
+def generate_ai_future_reasons(product_name, product_stats, prediction):
+    fallback_reasons = [
+        f"{product_name} has strong cumulative revenue in current data.",
+        "Recent sales pattern shows consistent momentum across time periods.",
+        "Projected trend remains above baseline compared to historical average."
+    ]
+
+    if not api_key:
+        return fallback_reasons
+
+    try:
+        dated_revenue = sorted(product_stats.get('dated_revenue', []), key=lambda item: item[0])
+        recent_values = [value for _, value in dated_revenue[-3:]] if dated_revenue else []
+        recent_avg = (sum(recent_values) / len(recent_values)) if recent_values else 0
+        projected = float(prediction.get('projected_revenue', 0) or 0)
+        growth_pct = ((projected - recent_avg) / recent_avg * 100) if recent_avg > 0 else 0
+
+        prompt = f"""You are an AI sales analyst.
+Give exactly 3 concise reasons why this product can sell higher in future.
+
+Product: {product_name}
+Total Revenue: {product_stats.get('revenue', 0):.2f}
+Total Units: {product_stats.get('quantity', 0):.2f}
+Records: {product_stats.get('records', 0)}
+Projected Revenue: {projected:.2f}
+Recent Average Revenue: {recent_avg:.2f}
+Projected vs Recent Growth %: {growth_pct:.2f}
+Confidence: {prediction.get('confidence', 'N/A')}
+
+Rules:
+- Output JSON array only
+- Exactly 3 strings
+- Each reason max 16 words
+- No markdown, no numbering
+"""
+
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt
+        )
+
+        text = (response.text or '').strip()
+        if text.startswith('```'):
+            text = text.strip('`')
+            if text.startswith('json'):
+                text = text[4:].strip()
+
+        parsed = json.loads(text)
+        if isinstance(parsed, list):
+            cleaned = [str(item).strip() for item in parsed if str(item).strip()]
+            if len(cleaned) >= 3:
+                return cleaned[:3]
+
+        return fallback_reasons
+    except Exception:
+        return fallback_reasons
+
+
+def get_product_insights(data):
+    aggregates = {}
+    has_quantity = False
+    has_revenue = False
+    all_dates = set()
+
+    for record in data:
+        if 'data' not in record:
+            continue
+
+        data_dict = record['data']
+        product_key = first_matching_key(data_dict, 'product')
+        if not product_key:
+            continue
+
+        product_name = str(data_dict[product_key]).strip()
+        if not product_name or product_name.lower() == 'nan':
+            continue
+
+        if product_name not in aggregates:
+            aggregates[product_name] = {
+                'quantity': 0.0,
+                'revenue': 0.0,
+                'records': 0,
+                'dated_revenue': [],
+                'dated_quantity': []
+            }
+
+        aggregates[product_name]['records'] += 1
+
+        quantity_val = None
+        quantity_key = first_matching_key(data_dict, 'quantity')
+        if quantity_key:
+            quantity_val = to_float(data_dict.get(quantity_key))
+            if quantity_val is not None:
+                has_quantity = True
+                aggregates[product_name]['quantity'] += quantity_val
+
+        revenue_key = first_matching_key(data_dict, 'revenue')
+        revenue_val = None
+        if revenue_key:
+            revenue_val = to_float(data_dict.get(revenue_key))
+            if revenue_val is not None:
+                has_revenue = True
+                aggregates[product_name]['revenue'] += revenue_val
+        else:
+            # Fallback: derive revenue = price × quantity
+            price_key = first_matching_key(data_dict, 'price')
+            if price_key and quantity_val is not None:
+                price_val = to_float(data_dict.get(price_key))
+                if price_val is not None:
+                    revenue_val = price_val * quantity_val
+                    has_revenue = True
+                    aggregates[product_name]['revenue'] += revenue_val
+
+        date_key = first_matching_key(data_dict, 'date')
+        if date_key:
+            parsed_date = pd.to_datetime(str(data_dict.get(date_key)).strip(), errors='coerce')
+            if not pd.isna(parsed_date):
+                all_dates.add(parsed_date)
+                if revenue_val is not None:
+                    aggregates[product_name]['dated_revenue'].append((parsed_date, revenue_val))
+                if quantity_val is not None:
+                    aggregates[product_name]['dated_quantity'].append((parsed_date, quantity_val))
+
+    if not aggregates:
+        return {
+            'available': False,
+            'message': 'Product insights are not available for this dataset.'
+        }
+
+    metric_key = 'quantity' if has_quantity else 'revenue'
+    metric_label = 'Units Sold' if metric_key == 'quantity' else 'Revenue'
+
+    ranked_products = sorted(
+        aggregates.items(),
+        key=lambda item: item[1][metric_key],
+        reverse=True
+    )
+
+    most_product, most_stats = ranked_products[0]
+    least_product, least_stats = ranked_products[-1]
+
+    forecast_candidates = []
+    for product_name, stats in aggregates.items():
+        dated_points = sorted(stats['dated_revenue'], key=lambda item: item[0])
+        revenue_series = [point[1] for point in dated_points]
+        projected = forecast_next_value(revenue_series)
+        if projected is not None:
+            forecast_candidates.append((product_name, projected, len(revenue_series)))
+
+    if forecast_candidates:
+        forecast_candidates.sort(key=lambda item: item[1], reverse=True)
+        predicted_product, projected_revenue, sample_size = forecast_candidates[0]
+        prediction = {
+            'name': predicted_product,
+            'projected_revenue': projected_revenue,
+            'confidence': 'High' if sample_size >= 6 else 'Medium',
+            'basis': 'Time trend forecast from historical product revenue'
+        }
+    else:
+        fallback_product, fallback_stats = max(
+            aggregates.items(),
+            key=lambda item: (item[1]['revenue'] / max(1, item[1]['records']))
+        )
+        prediction = {
+            'name': fallback_product,
+            'projected_revenue': fallback_stats['revenue'] / max(1, fallback_stats['records']),
+            'confidence': 'Low',
+            'basis': 'Fallback using average revenue per record (insufficient date trend)'
+        }
+
+    prediction_product_stats = aggregates.get(prediction['name'], {})
+    prediction_series_len = len(prediction_product_stats.get('dated_revenue', []))
+    if prediction_series_len >= 3:
+        prediction_reasons = generate_ai_future_reasons(
+            prediction['name'],
+            prediction_product_stats,
+            prediction
+        )
+    else:
+        prediction_reasons = [
+            f"{prediction['name']} leads current dataset on tracked sales metric.",
+            "Recent observed demand stays stable without major drop-offs.",
+            "Projected value remains above competing products in this dataset."
+        ]
+
+    def build_trend_points(product_name, preferred_metric):
+        stats = aggregates.get(product_name, {})
+        if preferred_metric == 'quantity':
+            raw_points = stats.get('dated_quantity', [])
+            metric_for_plot = 'quantity'
+            if not raw_points:
+                raw_points = stats.get('dated_revenue', [])
+                metric_for_plot = 'revenue'
+        else:
+            raw_points = stats.get('dated_revenue', [])
+            metric_for_plot = 'revenue'
+
+        if not raw_points:
+            return {
+                'metric': metric_for_plot,
+                'points': []
+            }
+
+        grouped = {}
+        for dt, val in raw_points:
+            key = dt.strftime('%Y-%m-%d')
+            grouped[key] = grouped.get(key, 0) + val
+
+        # Build continuous timeline for better spike detection (0 on non-sale dates)
+        timeline_dates = sorted(all_dates) if all_dates else sorted(dt for dt, _ in raw_points)
+        points = []
+        for dt in timeline_dates:
+            date_key = dt.strftime('%Y-%m-%d')
+            points.append({'x': date_key, 'y': grouped.get(date_key, 0)})
+
+        return {
+            'metric': metric_for_plot,
+            'points': points
+        }
+
+    return {
+        'available': True,
+        'metric_used': metric_key,
+        'metric_label': metric_label,
+        'most_sold_product': {
+            'name': most_product,
+            'value': most_stats[metric_key]
+        },
+        'least_sold_product': {
+            'name': least_product,
+            'value': least_stats[metric_key]
+        },
+        'most_sold_trend': build_trend_points(most_product, metric_key),
+        'least_sold_trend': build_trend_points(least_product, metric_key),
+        'predicted_highest_future_sales': {
+            **prediction,
+            'reasons': prediction_reasons
+        }
+    }
 
 @app.route('/api/upload', methods=['POST'])
 def upload_data():
@@ -185,12 +618,14 @@ def upload_data():
         })
         
         insights = extract_sales_insights(records)
+        product_insights = get_product_insights(sales_data)
         
         return jsonify({
             'message': 'File processed successfully',
             'records_added': len(records),
             'total_records': len(sales_data),
-            'insights': insights
+            'insights': insights,
+            'product_insights': product_insights
         })
     
     except Exception as e:
@@ -228,40 +663,49 @@ def handle_query():
         if needs_visualization and len(sales_data) > 0:
             charts = visualizer.generate_all_charts(sales_data)
         
-        # Create sample data text
-        sample_data_text = ""
+        # Create FULL dataset text (not just samples) - this is critical for accurate answers
+        full_data_text = ""
         if sales_data:
-            for i, record in enumerate(sales_data[:3]):
+            # Include ALL records so AI can answer accurately
+            # Limit to 500 records to avoid token limits, but this covers most use cases
+            max_records = min(len(sales_data), 500)
+            for i, record in enumerate(sales_data[:max_records]):
                 if 'data' in record:
-                    sample_data_text += f"Record {i+1}: {json.dumps(record['data'], indent=2)}\n"
+                    full_data_text += f"Row {i+1}: {json.dumps(record['data'])}\n"
+            
+            if len(sales_data) > max_records:
+                full_data_text += f"\n[Note: Showing first {max_records} of {len(sales_data)} total records]\n"
         
-        # Create prompt for Gemini
-        prompt = f"""You are a Sales Analytics Assistant with visualization capabilities.
+        # Create prompt for Gemini with COMPLETE data
+        prompt = f"""You are a Sales Analytics Agent.
 
-USER QUERY: {query}
+CRITICAL: You MUST ONLY use the EXACT data provided below. The COMPLETE dataset is included.
 
-SALES DATA SUMMARY:
-- Total Records: {data_summary['record_count']}
-- Total Revenue: ${data_summary['total_revenue']:,.2f}
-- Average Revenue: ${data_summary['avg_revenue']:,.2f}
-- Regions: {', '.join(data_summary['regions'][:10])}
-- Products: {', '.join(data_summary['products'][:10])}
-- Time Periods: {', '.join(data_summary['time_periods'][:5])}
-- Available Columns: {', '.join(data_summary['columns'][:15])}
+ABSOLUTE RULES (VIOLATION = FAILURE):
+1. ONLY use data from the "COMPLETE DATASET" section below - this is ALL the data that exists
+2. DO NOT invent, assume, estimate, or hallucinate ANY values
+3. DO NOT use any external knowledge or typical patterns
+4. If information is not in the dataset, respond: "This information is not available in the uploaded data."
+5. Every number you mention MUST be directly from or calculated from the dataset below
+6. Show your calculation when providing totals or averages
+7. Use Indian Rupee (₹) for all revenue/currency values
 
-SAMPLE DATA (first 3 records):
-{sample_data_text}
+COMPLETE DATASET ({data_summary['record_count']} records):
+{full_data_text}
+
+DATASET COLUMNS: {', '.join(data_summary['columns'])}
+
+USER QUESTION: {query}
 
 AVAILABLE VISUALIZATIONS: {list(charts.keys()) if charts else 'None generated'}
 
-INSTRUCTIONS:
-1. Answer the user's question based on the sales data
-2. If visualizations are available and relevant, mention them in your response
-3. Provide insights that could be visualized
-4. If asking for specific visualization, explain what it shows
-5. Format: Friendly, helpful, with bullet points for key insights
+RESPONSE FORMAT:
+- Answer based ONLY on the exact data above
+- For calculations, show: which rows/values you used
+- Be concise but accurate
+- Use bullet points for clarity
 
-ANSWER:"""
+YOUR ANSWER (using ONLY the data above):"""
         
         # Generate response using NEW Google AI API
         response = client.models.generate_content(
@@ -282,7 +726,47 @@ ANSWER:"""
                 'total_records': data_summary['record_count'],
                 'total_revenue': data_summary['total_revenue'],
                 'regions_count': len(data_summary['regions']),
-                'products_count': len(data_summary['products'])
+                'products_count': len(data_summary['products']),
+                'revenue': {
+                    'total': data_summary['total_revenue'],
+                    'average': data_summary['avg_revenue']
+                },
+                'categories': {
+                    'regions': data_summary['regions'],
+                    'products': data_summary['products'],
+                    'time_periods': data_summary['time_periods'][:10]
+                },
+                'metrics_available': data_summary['metrics_available'],
+                'product_insights': get_product_insights(sales_data),
+                'dynamic_stats': [
+                    {
+                        'id': 'records',
+                        'label': 'Records',
+                        'value': data_summary['record_count'],
+                        'type': 'count'
+                    },
+                    {
+                        'id': 'revenue',
+                        'label': 'Revenue',
+                        'value': data_summary['total_revenue'] if data_summary['metrics_available']['revenue'] else None,
+                        'type': 'currency',
+                        'available': data_summary['metrics_available']['revenue']
+                    },
+                    {
+                        'id': 'regions',
+                        'label': data_summary.get('region_label', 'Regions'),
+                        'value': len(data_summary['regions']) if data_summary['metrics_available']['region'] else None,
+                        'type': 'count',
+                        'available': data_summary['metrics_available']['region']
+                    },
+                    {
+                        'id': 'products',
+                        'label': data_summary.get('product_label', 'Products'),
+                        'value': len(data_summary['products']) if data_summary['metrics_available']['product'] else None,
+                        'type': 'count',
+                        'available': data_summary['metrics_available']['product']
+                    }
+                ]
             },
             'visualizations': charts
         })
@@ -350,6 +834,7 @@ def get_specific_visualization(chart_type):
 def get_data_summary():
     """Get summary of ingested data"""
     insights = extract_sales_insights(sales_data)
+    product_insights = get_product_insights(sales_data)
     
     summary = {
         'total_records': len(sales_data),
@@ -363,7 +848,38 @@ def get_data_summary():
             'products': insights['products'],
             'time_periods': insights['time_periods'][:10]
         },
-        'available_columns': insights['columns']
+        'available_columns': insights['columns'],
+        'product_insights': product_insights,
+        'metrics_available': insights['metrics_available'],
+        'dynamic_stats': [
+            {
+                'id': 'records',
+                'label': 'Records',
+                'value': len(sales_data),
+                'type': 'count'
+            },
+            {
+                'id': 'revenue',
+                'label': 'Revenue',
+                'value': insights['total_revenue'] if insights['metrics_available']['revenue'] else None,
+                'type': 'currency',
+                'available': insights['metrics_available']['revenue']
+            },
+            {
+                'id': 'regions',
+                'label': insights.get('region_label', 'Regions'),
+                'value': len(insights['regions']) if insights['metrics_available']['region'] else None,
+                'type': 'count',
+                'available': insights['metrics_available']['region']
+            },
+            {
+                'id': 'products',
+                'label': insights.get('product_label', 'Products'),
+                'value': len(insights['products']) if insights['metrics_available']['product'] else None,
+                'type': 'count',
+                'available': insights['metrics_available']['product']
+            }
+        ]
     }
     
     return jsonify(summary)
@@ -371,11 +887,65 @@ def get_data_summary():
 @app.route('/api/clear', methods=['POST'])
 def clear_data():
     """Clear all data"""
-    global sales_data, file_history
+    global sales_data, file_history, _original_column_map
     sales_data = []
     file_history = []
+    _original_column_map = {}
     
     return jsonify({'message': 'All data cleared successfully'})
+
+@app.route('/api/samples', methods=['GET'])
+def list_samples():
+    """List available sample data files"""
+    sample_dir = os.path.join(os.path.dirname(__file__), 'sample data')
+    samples = []
+    if os.path.isdir(sample_dir):
+        for fname in sorted(os.listdir(sample_dir)):
+            if fname.lower().endswith(('.csv', '.xlsx', '.xls')):
+                fpath = os.path.join(sample_dir, fname)
+                size = os.path.getsize(fpath)
+                samples.append({'name': fname, 'size': size})
+    return jsonify({'samples': samples})
+
+
+@app.route('/api/samples/<path:filename>', methods=['GET'])
+def get_sample(filename):
+    """Load a sample data file as if it were uploaded"""
+    sample_dir = os.path.join(os.path.dirname(__file__), 'sample data')
+    fpath = os.path.join(sample_dir, filename)
+    if not os.path.isfile(fpath):
+        return jsonify({'error': 'Sample file not found'}), 404
+
+    with open(fpath, 'rb') as f:
+        file_content = f.read()
+
+    ext = filename.rsplit('.', 1)[-1].lower()
+    if ext == 'csv':
+        records = process_csv(file_content)
+    elif ext in ('xlsx', 'xls'):
+        records = process_excel(file_content)
+    else:
+        return jsonify({'error': f'Unsupported file type: {ext}'}), 400
+
+    sales_data.extend(records)
+    file_history.append({
+        'filename': filename,
+        'type': ext,
+        'records': len(records),
+        'timestamp': datetime.now().isoformat()
+    })
+
+    insights = extract_sales_insights(records)
+    product_insights = get_product_insights(sales_data)
+
+    return jsonify({
+        'message': 'Sample file loaded successfully',
+        'records_added': len(records),
+        'total_records': len(sales_data),
+        'insights': insights,
+        'product_insights': product_insights
+    })
+
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -400,6 +970,8 @@ if __name__ == '__main__':
     print("  GET  /api/data/summary")
     print("  GET  /api/visualizations")
     print("  GET  /api/visualize/<chart_type>")
+    print("  GET  /api/samples")
+    print("  GET  /api/samples/<filename>")
     print("  POST /api/upload")
     print("  POST /api/query")
     print("  POST /api/clear")

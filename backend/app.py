@@ -897,7 +897,7 @@ def clear_data():
 @app.route('/api/samples', methods=['GET'])
 def list_samples():
     """List available sample data files"""
-    sample_dir = os.path.join(os.path.dirname(__file__), 'sample data')
+    sample_dir = os.path.join(os.path.dirname(__file__), 'sample_data')
     samples = []
     if os.path.isdir(sample_dir):
         for fname in sorted(os.listdir(sample_dir)):
@@ -911,7 +911,7 @@ def list_samples():
 @app.route('/api/samples/<path:filename>', methods=['GET'])
 def get_sample(filename):
     """Load a sample data file as if it were uploaded"""
-    sample_dir = os.path.join(os.path.dirname(__file__), 'sample data')
+    sample_dir = os.path.join(os.path.dirname(__file__), 'sample_data')
     fpath = os.path.join(sample_dir, filename)
     if not os.path.isfile(fpath):
         return jsonify({'error': 'Sample file not found'}), 404

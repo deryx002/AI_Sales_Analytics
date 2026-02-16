@@ -1,0 +1,21 @@
+date,region,product,revenue,customer,pipeline_stage,quantity,price,category
+2024-01-15,North America,Product A,50000,Company X,Closed Won,100,500,Software
+2024-01-20,Europe,Product B,75000,Company Y,Negotiation,150,500,Hardware
+2024-02-10,Asia,Product C,30000,Company Z,Proposal,60,500,Service
+2024-02-25,North America,Product A,45000,Company W,Closed Won,90,500,Software
+2024-03-05,South India,Product B,60000,Company V,Closed Lost,120,500,Hardware
+2024-03-15,Europe,Product C,80000,Company U,Closed Won,160,500,Service
+2024-04-01,South India,Product A,55000,Company T,Closed Won,110,500,Software
+2024-04-15,North America,Product B,70000,Company S,Negotiation,140,500,Hardware
+2024-05-01,Asia,Product C,40000,Company R,Proposal,80,500,Service
+2024-05-20,Europe,Product A,90000,Company Q,Closed Won,180,500,Software
+2024-06-10,North America,Product B,65000,Company P,Closed Won,130,500,Hardware
+2024-06-25,Asia,Product C,35000,Company O,Negotiation,70,500,Service
+2024-07-05,South India,Product A,48000,Company N,Closed Lost,96,500,Software
+2024-07-20,Europe,Product B,82000,Company M,Closed Won,164,500,Hardware
+2024-08-01,North America,Product C,55000,Company L,Proposal,110,500,Service
+2024-08-15,Asia,Product A,72000,Company K,Closed Won,144,500,Software
+2024-09-01,South India,Product B,58000,Company J,Negotiation,116,500,Hardware
+2024-09-20,Europe,Product C,67000,Company I,Closed Won,134,500,Service
+2024-10-05,North America,Product A,92000,Company H,Closed Won,184,500,Software
+2024-10-25,Asia,Product B,63000,Company G,Closed Lost,126,500,Hardware

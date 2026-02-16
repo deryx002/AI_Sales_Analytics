@@ -1,0 +1,101 @@
+Invoice ID, Branch, City     , Customer Type, Gender, Product Line          , Product Name       , Unit Price, Quantity, Tax 5%, Total , Date     , Payment    , Rating
+       001, A     , Yangon   , Member       , Male  , Electronic Accessories, USB Cable          ,      15.50,        5,   3.88,  81.38, 1/5/2024 , Ewallet    ,    7.2
+       002, A     , Yangon   , Normal       , Female, Health & Beauty       , Shampoo            ,      25.99,        2,   2.60,  54.58, 1/5/2024 , Cash       ,    8.5
+       003, A     , Yangong  , Member       , Female, Fashion Accessories   , Sunglasses         ,      45.00,        1,   2.25,  47.25, 2/5/2024 , Credit card,    6.8
+       004, A     , Yangon   , Normal       , Male  , Food & Beverages      , Coffee Beans       ,      30.00,        3,   4.50,  94.50, 2/5/2024 , Ewallet    ,    9.1
+       005, A     , Yangon   , Member       , Female, Sports & Travel       , Yoga Mat           ,      35.99,        2,   3.60,  75.58, 3/5/2024 , Cash       ,    7.8
+       006, A     , Yangon   , Normal       , Male  , Electronic Accessories, Bluetooth Speaker  ,      85.00,        1,   4.25,  89.25, 3/5/2024 , Credit card,    8.2
+       007, A     , Yangon   , Member       , Female, Home & Lifestyle      , Throw Pillow       ,      22.50,        3,   3.38,  70.88, 4/5/2024 , Ewallet    ,    6.5
+       008, A     , Yangon   , Normal       , Male  , Health & Beauty       , Multivitamins      ,      45.99,        1,   2.30,  48.29, 4/5/2024 , Cash       ,    9
+       009, A     , Yangon   , Member       , Female, Food & Beverages      , Organic Honey      ,      18.99,        2,   1.90,  39.88, 5/5/2024 , Credit card,    7.4
+       010, A     , Yangon   , Normal       , Male  , Fashion Accessories   , Leather Belt       ,      29.99,        1,   1.50,  31.49, 5/5/2024 , Ewallet    ,    8.7
+       011, B     , Mandalay , Member       , Female, Electronic Accessories, Wireless Mouse     ,      32.99,        2,   3.30,  69.28, 6/5/2024 , Cash       ,    8.1
+       012, B     , Mandalay , Normal       , Male  , Home & Lifestyle      , Coffee Maker       ,      89.99,        1,   4.50,  94.49, 6/5/2024 , Credit card,    7.9
+       013, B     , Mandalay , Member       , Female, Sports & Travel       , Dumbbell Set       ,      55.50,        1,   2.78,  58.28, 7/5/2024 , Ewallet    ,    6.2
+       014, B     , Mandalay , Normal       , Male  , Health & Beauty       , Toothpaste         ,       8.99,        5,   2.25,  47.20, 7/5/2024 , Cash       ,    8.8
+       015, B     , Mandalay , Member       , Female, Fashion Accessories   , Hair Clips         ,       4.99,        8,   2.00,  41.92, 8/5/2024 , Credit card,    7.5
+       016, B     , Mandalay , Normal       , Male  , Food & Beverages      , Green Tea          ,      12.99,        4,   2.60,  54.56, 8/5/2024 , Ewallet    ,    9.2
+       017, B     , Mandalay , Member       , Female, Electronic Accessories, Laptop Stand       ,      45.99,        1,   2.30,  48.29, 9/5/2024 , Cash       ,    6.9
+       018, B     , Mandalay , Normal       , Male  , Home & Lifestyle      , Bedsheet Set       ,      65.00,        1,   3.25,  68.25, 9/5/2024 , Credit card,    8.3
+       019, B     , Mandalay , Member       , Female, Sports & Travel       , Water Bottle       ,      18.50,        3,   2.78,  58.28, 10/5/2024, Ewallet    ,    7.1
+       020, B     , Mandalay , Normal       , Male  , Health & Beauty       , Sunscreen          ,      22.99,        2,   2.30,  48.28, 10/5/2024, Cash       ,    8.4
+       021, C     , Naypyitaw, Member       , Female, Fashion Accessories   , Scarf              ,      19.99,        2,   2.00,  41.98, 11/5/2024, Credit card,    7.6
+       022, C     , Naypyitaw, Normal       , Male  , Food & Beverages      , Olive Oil          ,      28.99,        2,   2.90,  60.88, 11/5/2024, Ewallet    ,    8.9
+       023, C     , Naypyitaw, Member       , Female, Electronic Accessories, HDMI Cable         ,      22.50,        3,   3.38,  70.88, 12/5/2024, Cash       ,    6.4
+       024, C     , Naypyitaw, Normal       , Male  , Home & Lifestyle      , Towel Set          ,      34.99,        2,   3.50,  73.48, 12/5/2024, Credit card,    7.7
+       025, C     , Naypyitaw, Member       , Female, Sports & Travel       , Running Shoes      ,      89.99,        1,   4.50,  94.49, 13/5/2024, Ewallet    ,    9.3
+       026, C     , Naypyitaw, Normal       , Male  , Health & Beauty       , Protein Powder     ,      55.99,        1,   2.80,  58.79, 13/5/2024, Cash       ,    8.6
+       027, C     , Naypyitaw, Member       , Female, Fashion Accessories   , Watch              ,     125.00,        1,   6.25, 131.25, 14/5/2024, Credit card,    7.9
+       028, C     , Naypyitaw, Normal       , Male  , Food & Beverages      , Pasta Pack         ,       9.99,        6,   3.00,  62.94, 14/5/2024, Ewallet    ,    8.2
+       029, C     , Naypyitaw, Member       , Female, Electronic Accessories, Phone Case         ,      19.99,        3,   3.00,  62.97, 15/5/2024, Cash       ,    7.3
+       030, C     , Naypyitaw, Normal       , Male  , Home & Lifestyle      , Storage Bins       ,      29.99,        2,   3.00,  62.98, 15/5/2024, Credit card,    6.7
+       031, A     , Yangon   , Member       , Female, Sports & Travel       , Tennis Racket      ,      75.00,        1,   3.75,  78.75, 16/5/2024, Ewallet    ,    8.9
+       032, A     , Yangon   , Normal       , Male  , Health & Beauty       , Face Wash          ,      14.99,        3,   2.25,  47.22, 16/5/2024, Cash       ,    7.5
+       033, A     , Yangon   , Member       , Female, Fashion Accessories   , Handbag            ,      85.50,        1,   4.28,  89.78, 17/5/2024, Credit card,    8.1
+       034, A     , Yangon   , Normal       , Male  , Food & Beverages      , Chocolate Box      ,      15.99,        4,   3.20,  67.16, 17/5/2024, Ewallet    ,    9.4
+       035, A     , Yangon   , Member       , Female, Electronic Accessories, Tablet Stand       ,      34.99,        2,   3.50,  73.48, 18/5/2024, Cash       ,    6.3
+       036, A     , Yangon   , Normal       , Male  , Home & Lifestyle      , Curtains           ,      49.99,        1,   2.50,  52.49, 18/5/2024, Credit card,    7.8
+       037, A     , Yangon   , Member       , Female, Sports & Travel       , Exercise Mat       ,      29.99,        2,   3.00,  62.98, 19/5/2024, Ewallet    ,    8.2
+       038, A     , Yangon   , Normal       , Male  , Health & Beauty       , Hair Dryer         ,      39.99,        1,   2.00,  41.99, 19/5/2024, Cash       ,    7.1
+       039, A     , Yangon   , Member       , Female, Fashion Accessories   , Winter Gloves      ,      15.99,        3,   2.40,  50.37, 20/5/2024, Credit card,    6.9
+       040, A     , Yangon   , Normal       , Male  , Food & Beverages      , Spice Set          ,      24.99,        2,   2.50,  52.48, 20/5/2024, Ewallet    ,    8.5
+       041, B     , Mandalay , Member       , Female, Electronic Accessories, Webcam             ,      65.99,        1,   3.30,  69.29, 21/5/2024, Cash       ,    7.4
+       042, B     , Mandalay , Normal       , Male  , Home & Lifestyle      , Wall Clock         ,      32.99,        2,   3.30,  69.28, 21/5/2024, Credit card,    8
+       043, B     , Mandalay , Member       , Female, Sports & Travel       , Swimwear           ,      45.99,        1,   2.30,  48.29, 22/5/2024, Ewallet    ,    7.2
+       044, B     , Mandalay , Normal       , Male  , Health & Beauty       , Electric Toothbrush,      55.99,        1,   2.80,  58.79, 22/5/2024, Cash       ,    8.7
+       045, B     , Mandalay , Member       , Female, Fashion Accessories   , Hat                ,      22.99,        2,   2.30,  48.28, 23/5/2024, Credit card,    6.8
+       046, B     , Mandalay , Normal       , Male  , Food & Beverages      , BBQ Sauce          ,       6.99,        8,   2.80,  58.72, 23/5/2024, Ewallet    ,    9.1
+       047, B     , Mandalay , Member       , Female, Electronic Accessories, Power Bank         ,      49.99,        1,   2.50,  52.49, 24/5/2024, Cash       ,    8.3
+       048, B     , Mandalay , Normal       , Male  , Home & Lifestyle      , Lamp               ,      39.99,        1,   2.00,  41.99, 24/5/2024, Credit card,    7.6
+       049, B     , Mandalay , Member       , Female, Sports & Travel       , Hiking Boots       ,      95.00,        1,   4.75,  99.75, 25/5/2024, Ewallet    ,    8.9
+       050, B     , Mandalay , Normal       , Male  , Health & Beauty       , Hand Cream         ,       8.99,        5,   2.25,  47.20, 25/5/2024, Cash       ,    7.9
+       051, C     , Naypyitaw, Member       , Female, Fashion Accessories   , Socks Pack         ,      12.99,        4,   2.60,  54.56, 26/5/2024, Credit card,    7
+       052, C     , Naypyitaw, Normal       , Male  , Food & Beverages      , Instant Noodles    ,       3.99,       15,   2.99,  62.84, 26/5/2024, Ewallet    ,    8.4
+       053, C     , Naypyitaw, Member       , Female, Electronic Accessories, Memory Card        ,      29.99,        2,   3.00,  62.98, 27/5/2024, Cash       ,    6.5
+       054, C     , Naypyitaw, Normal       , Male  , Home & Lifestyle      , Picture Frame      ,      14.99,        3,   2.25,  47.22, 27/5/2024, Credit card,    7.3
+       055, C     , Naypyitaw, Member       , Female, Sports & Travel       , Yoga Blocks        ,      19.99,        3,   3.00,  62.97, 28/5/2024, Ewallet    ,    8.1
+       056, C     , Naypyitaw, Normal       , Male  , Health & Beauty       , Body Lotion        ,      16.99,        3,   2.55,  53.52, 28/5/2024, Cash       ,    7.8
+       057, C     , Naypyitaw, Member       , Female, Fashion Accessories   , Belt               ,      18.99,        2,   1.90,  39.88, 29/5/2024, Credit card,    6.2
+       058, C     , Naypyitaw, Normal       , Male  , Food & Beverages      , Rice Bag           ,      45.99,        2,   4.60,  96.58, 29/5/2024, Ewallet    ,    9
+       059, C     , Naypyitaw, Member       , Female, Electronic Accessories, Car Charger        ,      19.99,        3,   3.00,  62.97, 30/5/2024, Cash       ,    7.1
+       060, C     , Naypyitaw, Normal       , Male  , Home & Lifestyle      , Vacuum Flask       ,      28.99,        2,   2.90,  60.88, 30/5/2024, Credit card,    8.2
+       061, A     , Yangon   , Member       , Female, Sports & Travel       , Jump Rope          ,      12.99,        4,   2.60,  54.56, 31/5/2024, Ewallet    ,    7.5
+       062, A     , Yangon   , Normal       , Male  , Health & Beauty       , Nail Polish        ,       7.99,        6,   2.40,  50.34, 31/5/2024, Cash       ,    8.6
+       063, A     , Yangon   , Member       , Female, Fashion Accessories   , Wallet             ,      39.99,        1,   2.00,  41.99, 1/6/2024 , Credit card,    6.7
+       064, A     , Yangon   , Normal       , Male  , Food & Beverages      , Tomato Sauce       ,       5.99,        7,   2.10,  44.03, 1/6/2024 , Ewallet    ,    7.9
+       065, A     , Yangon   , Member       , Female, Electronic Accessories, Smart Watch        ,     129.99,        1,   6.50, 136.49, 2/6/2024 , Cash       ,    9.5
+       066, A     , Yangon   , Normal       , Male  , Home & Lifestyle      , Candle Set         ,      24.99,        2,   2.50,  52.48, 2/6/2024 , Credit card,    8
+       067, A     , Yangon   , Member       , Female, Sports & Travel       , Gym Bag            ,      49.99,        1,   2.50,  52.49, 3/6/2024 , Ewallet    ,    7.4
+       068, A     , Yangon   , Normal       , Male  , Health & Beauty       , Deodorant          ,       9.99,        5,   2.50,  52.45, 3/6/2024 , Cash       ,    8.3
+       069, A     , Yangon   , Member       , Female, Fashion Accessories   , Necklace           ,      89.99,        1,   4.50,  94.49, 4/6/2024 , Credit card,    7.8
+       070, A     , Yangon   , Normal       , Male  , Food & Beverages      , Cooking Oil        ,      35.99,        2,   3.60,  75.58, 4/6/2024 , Ewallet    ,    8.9
+       071, B     , Mandalay , Member       , Female, Electronic Accessories, Headphones         ,      79.99,        1,   4.00,  83.99, 5/6/2024 , Cash       ,    8.5
+       072, B     , Mandalay , Normal       , Male  , Home & Lifestyle      , Laundry Basket     ,      19.99,        3,   3.00,  62.97, 5/6/2024 , Credit card,    6.9
+       073, B     , Mandalay , Member       , Female, Sports & Travel       , Boxing Gloves      ,      59.99,        1,   3.00,  62.99, 6/6/2024 , Ewallet    ,    7.6
+       074, B     , Mandalay , Normal       , Male  , Health & Beauty       , Razor Kit          ,      34.99,        1,   1.75,  36.74, 6/6/2024 , Cash       ,    8.1
+       075, B     , Mandalay , Member       , Female, Fashion Accessories   , Tie                ,      25.99,        2,   2.60,  54.58, 7/6/2024 , Credit card,    6.4
+       076, B     , Mandalay , Normal       , Male  , Food & Beverages      , Cereal             ,      18.99,        3,   2.85,  59.82, 7/6/2024 , Ewallet    ,    8.7
+       077, B     , Mandalay , Member       , Female, Electronic Accessories, Speaker Stand      ,      42.99,        1,   2.15,  45.14, 8/6/2024 , Cash       ,    7.2
+       078, B     , Mandalay , Normal       , Male  , Home & Lifestyle      , Rug                ,      79.99,        1,   4.00,  83.99, 8/6/2024 , Credit card,    7.9
+       079, B     , Mandalay , Member       , Female, Sports & Travel       , Kettlebell         ,      44.99,        1,   2.25,  47.24, 9/6/2024 , Ewallet    ,    6.8
+       080, B     , Mandalay , Normal       , Male  , Health & Beauty       , Bath Sponge        ,       4.99,        8,   2.00,  41.92, 9/6/2024 , Cash       ,    8.4
+       081, C     , Naypyitaw, Member       , Female, Fashion Accessories   , Umbrella           ,      18.99,        3,   2.85,  59.82, 10/6/2024, Credit card,    7.1
+       082, C     , Naypyitaw, Normal       , Male  , Food & Beverages      , Pickles            ,       7.99,        5,   2.00,  41.95, 10/6/2024, Ewallet    ,    7.8
+       083, C     , Naypyitaw, Member       , Female, Electronic Accessories, Keyboard           ,      65.99,        1,   3.30,  69.29, 11/6/2024, Cash       ,    8.2
+       084, C     , Naypyitaw, Normal       , Male  , Home & Lifestyle      , Photo Album        ,      22.99,        2,   2.30,  48.28, 11/6/2024, Credit card,    6.5
+       085, C     , Naypyitaw, Member       , Female, Sports & Travel       , Fitness Tracker    ,      95.00,        1,   4.75,  99.75, 12/6/2024, Ewallet    ,    9.2
+       086, C     , Naypyitaw, Normal       , Male  , Health & Beauty       , Eye Cream          ,      29.99,        2,   3.00,  62.98, 12/6/2024, Cash       ,    7.7
+       087, C     , Naypyitaw, Member       , Female, Fashion Accessories   , Bracelet           ,      34.99,        1,   1.75,  36.74, 13/6/2024, Credit card,    6.3
+       088, C     , Naypyitaw, Normal       , Male  , Food & Beverages      , Pancake Mix        ,       8.99,        4,   1.80,  37.76, 13/6/2024, Ewallet    ,    8.5
+       089, C     , Naypyitaw, Member       , Female, Electronic Accessories, USB Hub            ,      29.99,        2,   3.00,  62.98, 14/6/2024, Cash       ,    7.4
+       090, C     , Naypyitaw, Normal       , Male  , Home & Lifestyle      , Clothes Rack       ,      54.99,        1,   2.75,  57.74, 14/6/2024, Credit card,    6.9
+       091, A     , Yangon   , Member       , Female, Sports & Travel       , Resistance Bands   ,      22.99,        2,   2.30,  48.28, 15/6/2024, Ewallet    ,    7.9
+       092, A     , Yangon   , Normal       , Male  , Health & Beauty       , Mouthwash          ,       7.99,        5,   2.00,  41.95, 15/6/2024, Cash       ,    8.8
+       093, A     , Yangon   , Member       , Female, Fashion Accessories   , Backpack           ,      65.99,        1,   3.30,  69.29, 16/6/2024, Credit card,    8.3
+       094, A     , Yangon   , Normal       , Male  , Food & Beverages      , Coconut Water      ,       6.99,        6,   2.10,  44.04, 16/6/2024, Ewallet    ,    9.1
+       095, A     , Yangon   , Member       , Female, Electronic Accessories, Gaming Mouse       ,      49.99,        1,   2.50,  52.49, 17/6/2024, Cash       ,    7.5
+       096, A     , Yangon   , Normal       , Male  , Home & Lifestyle      , Desk Organizer     ,      27.99,        2,   2.80,  58.78, 17/6/2024, Credit card,    7.2
+       097, A     , Yangon   , Member       , Female, Sports & Travel       , Skipping Rope      ,       9.99,        5,   2.50,  52.45, 18/6/2024, Ewallet    ,    6.7
+       098, A     , Yangon   , Normal       , Male  , Health & Beauty       , Shaving Cream      ,       6.99,        6,   2.10,  44.04, 18/6/2024, Cash       ,    8
+       099, A     , Yangon   , Member       , Female, Fashion Accessories   , Sun Hat            ,      24.99,        2,   2.50,  52.48, 19/6/2024, Credit card,    7.3
+       100, A     , Yangon   , Normal       , Male  , Food & Beverages      , Pasta Sauce        ,       5.99,        7,   2.10,  44.03, 19/6/2024, Ewallet    ,    8.6

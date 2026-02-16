@@ -1,0 +1,201 @@
+date,region,product,revenue,customer,pipeline_stage,quantity,price,category
+2025-01-01, North America, Product A, 51000, Company A1, Closed Won, 102, 500, Software
+2025-01-02, Europe, Product B, 72000, Company A2, Negotiation, 144, 500, Hardware
+2025-01-03, Asia, Product C, 38000, Company A3, Proposal, 76, 500, Service
+2025-01-04, South India, Product A, 46000, Company A4, Closed Won, 92, 500, Software
+2025-01-05, North America, Product B, 69000, Company A5, Closed Lost, 138, 500, Hardware
+2025-01-06, Europe, Product C, 83000, Company A6, Closed Won, 166, 500, Service
+2025-01-07, Asia, Product A, 74000, Company A7, Negotiation, 148, 500, Software
+2025-01-08, South India, Product B, 57000, Company A8, Proposal, 114, 500, Hardware
+2025-01-09, North America, Product C, 56000, Company A9, Closed Won, 112, 500, Service
+2025-01-10, Europe, Product A, 91000, Company A10, Closed Won, 182, 500, Software
+2025-01-11, Asia, Product B, 64000, Company A11, Negotiation, 128, 500, Hardware
+2025-01-12, South India, Product C, 42000, Company A12, Proposal, 84, 500, Service
+2025-01-13, North America, Product A, 88000, Company A13, Closed Won, 176, 500, Software
+2025-01-14, Europe, Product B, 76000, Company A14, Closed Won, 152, 500, Hardware
+2025-01-15, Asia, Product C, 39000, Company A15, Closed Lost, 78, 500, Service
+2025-01-16, South India, Product A, 53000, Company A16, Negotiation, 106, 500, Software
+2025-01-17, North America, Product B, 61000, Company A17, Proposal, 122, 500, Hardware
+2025-01-18, Europe, Product C, 87000, Company A18, Closed Won, 174, 500, Service
+2025-01-19, Asia, Product A, 75000, Company A19, Closed Won, 150, 500, Software
+2025-01-20, South India, Product B, 59000, Company A20, Negotiation, 118, 500, Hardware
+2025-02-01, North America, Product A, 52000, Company B1, Closed Won, 104, 500, Software
+2025-02-02, Europe, Product B, 73000, Company B2, Negotiation, 146, 500, Hardware
+2025-02-03, Asia, Product C, 36000, Company B3, Proposal, 72, 500, Service
+2025-02-04, South India, Product A, 47000, Company B4, Closed Won, 94, 500, Software
+2025-02-05, North America, Product B, 70000, Company B5, Closed Lost, 140, 500, Hardware
+2025-02-06, Europe, Product C, 82000, Company B6, Closed Won, 164, 500, Service
+2025-02-07, Asia, Product A, 76000, Company B7, Negotiation, 152, 500, Software
+2025-02-08, South India, Product B, 58000, Company B8, Proposal, 116, 500, Hardware
+2025-02-09, North America, Product C, 54000, Company B9, Closed Won, 108, 500, Service
+2025-02-10, Europe, Product A, 92000, Company B10, Closed Won, 184, 500, Software
+2025-02-11, Asia, Product B, 63000, Company B11, Negotiation, 126, 500, Hardware
+2025-02-12, South India, Product C, 41000, Company B12, Proposal, 82, 500, Service
+2025-02-13, North America, Product A, 87000, Company B13, Closed Won, 174, 500, Software
+2025-02-14, Europe, Product B, 78000, Company B14, Closed Won, 156, 500, Hardware
+2025-02-15, Asia, Product C, 37000, Company B15, Closed Lost, 74, 500, Service
+2025-02-16, South India, Product A, 54000, Company B16, Negotiation, 108, 500, Software
+2025-02-17, North America, Product B, 62000, Company B17, Proposal, 124, 500, Hardware
+2025-02-18, Europe, Product C, 86000, Company B18, Closed Won, 172, 500, Service
+2025-02-19, Asia, Product A, 77000, Company B19, Closed Won, 154, 500, Software
+2025-02-20, South India, Product B, 60000, Company B20, Negotiation, 120, 500, Hardware
+2025-03-01, North America, Product A, 53000, Company C1, Closed Won, 106, 500, Software
+2025-03-02, Europe, Product B, 74000, Company C2, Negotiation, 148, 500, Hardware
+2025-03-03, Asia, Product C, 35000, Company C3, Proposal, 70, 500, Service
+2025-03-04, South India, Product A, 48000, Company C4, Closed Won, 96, 500, Software
+2025-03-05, North America, Product B, 71000, Company C5, Closed Lost, 142, 500, Hardware
+2025-03-06, Europe, Product C, 81000, Company C6, Closed Won, 162, 500, Service
+2025-03-07, Asia, Product A, 78000, Company C7, Negotiation, 156, 500, Software
+2025-03-08, South India, Product B, 56000, Company C8, Proposal, 112, 500, Hardware
+2025-03-09, North America, Product C, 57000, Company C9, Closed Won, 114, 500, Service
+2025-03-10, Europe, Product A, 93000, Company C10, Closed Won, 186, 500, Software
+2025-03-11, Asia, Product B, 62000, Company C11, Negotiation, 124, 500, Hardware
+2025-03-12, South India, Product C, 43000, Company C12, Proposal, 86, 500, Service
+2025-03-13, North America, Product A, 86000, Company C13, Closed Won, 172, 500, Software
+2025-03-14, Europe, Product B, 79000, Company C14, Closed Won, 158, 500, Hardware
+2025-03-15, Asia, Product C, 34000, Company C15, Closed Lost, 68, 500, Service
+2025-03-16, South India, Product A, 55000, Company C16, Negotiation, 110, 500, Software
+2025-03-17, North America, Product B, 63000, Company C17, Proposal, 126, 500, Hardware
+2025-03-18, Europe, Product C, 85000, Company C18, Closed Won, 170, 500, Service
+2025-03-19, Asia, Product A, 79000, Company C19, Closed Won, 158, 500, Software
+2025-03-20, South India, Product B, 61000, Company C20, Negotiation, 122, 500, Hardware
+2025-04-01, North America, Product A, 54000, Company D1, Closed Won, 108, 500, Software
+2025-04-02, Europe, Product B, 75000, Company D2, Negotiation, 150, 500, Hardware
+2025-04-03, Asia, Product C, 33000, Company D3, Proposal, 66, 500, Service
+2025-04-04, South India, Product A, 49000, Company D4, Closed Won, 98, 500, Software
+2025-04-05, North America, Product B, 72000, Company D5, Closed Lost, 144, 500, Hardware
+2025-04-06, Europe, Product C, 80000, Company D6, Closed Won, 160, 500, Service
+2025-04-07, Asia, Product A, 80000, Company D7, Negotiation, 160, 500, Software
+2025-04-08, South India, Product B, 55000, Company D8, Proposal, 110, 500, Hardware
+2025-04-09, North America, Product C, 58000, Company D9, Closed Won, 116, 500, Service
+2025-04-10, Europe, Product A, 94000, Company D10, Closed Won, 188, 500, Software
+2025-04-11, Asia, Product B, 61000, Company D11, Negotiation, 122, 500, Hardware
+2025-04-12, South India, Product C, 44000, Company D12, Proposal, 88, 500, Service
+2025-04-13, North America, Product A, 85000, Company D13, Closed Won, 170, 500, Software
+2025-04-14, Europe, Product B, 80000, Company D14, Closed Won, 160, 500, Hardware
+2025-04-15, Asia, Product C, 32000, Company D15, Closed Lost, 64, 500, Service
+2025-04-16, South India, Product A, 56000, Company D16, Negotiation, 112, 500, Software
+2025-04-17, North America, Product B, 64000, Company D17, Proposal, 128, 500, Hardware
+2025-04-18, Europe, Product C, 84000, Company D18, Closed Won, 168, 500, Service
+2025-04-19, Asia, Product A, 81000, Company D19, Closed Won, 162, 500, Software
+2025-04-20, South India, Product B, 62000, Company D20, Negotiation, 124, 500, Hardware
+2025-05-01, North America, Product A, 55000, Company E1, Closed Won, 110, 500, Software
+2025-05-02, Europe, Product B, 76000, Company E2, Negotiation, 152, 500, Hardware
+2025-05-03, Asia, Product C, 31000, Company E3, Proposal, 62, 500, Service
+2025-05-04, South India, Product A, 50000, Company E4, Closed Won, 100, 500, Software
+2025-05-05, North America, Product B, 73000, Company E5, Closed Lost, 146, 500, Hardware
+2025-05-06, Europe, Product C, 79000, Company E6, Closed Won, 158, 500, Service
+2025-05-07, Asia, Product A, 82000, Company E7, Negotiation, 164, 500, Software
+2025-05-08, South India, Product B, 54000, Company E8, Proposal, 108, 500, Hardware
+2025-05-09, North America, Product C, 59000, Company E9, Closed Won, 118, 500, Service
+2025-05-10, Europe, Product A, 95000, Company E10, Closed Won, 190, 500, Software
+2025-05-11, Asia, Product B, 60000, Company E11, Negotiation, 120, 500, Hardware
+2025-05-12, South India, Product C, 45000, Company E12, Proposal, 90, 500, Service
+2025-05-13, North America, Product A, 84000, Company E13, Closed Won, 168, 500, Software
+2025-05-14, Europe, Product B, 81000, Company E14, Closed Won, 162, 500, Hardware
+2025-05-15, Asia, Product C, 30000, Company E15, Closed Lost, 60, 500, Service
+2025-05-16, South India, Product A, 57000, Company E16, Negotiation, 114, 500, Software
+2025-05-17, North America, Product B, 65000, Company E17, Proposal, 130, 500, Hardware
+2025-05-18, Europe, Product C, 83000, Company E18, Closed Won, 166, 500, Service
+2025-05-19, Asia, Product A, 83000, Company E19, Closed Won, 166, 500, Software
+2025-05-20, South India, Product B, 63000, Company E20, Negotiation, 126, 500, Hardware
+2025-06-01, North America, Product A, 56000, Company F1, Closed Won, 112, 500, Software
+2025-06-02, Europe, Product B, 77000, Company F2, Negotiation, 154, 500, Hardware
+2025-06-03, Asia, Product C, 34000, Company F3, Proposal, 68, 500, Service
+2025-06-04, South India, Product A, 51000, Company F4, Closed Won, 102, 500, Software
+2025-06-05, North America, Product B, 74000, Company F5, Closed Lost, 148, 500, Hardware
+2025-06-06, Europe, Product C, 78000, Company F6, Closed Won, 156, 500, Service
+2025-06-07, Asia, Product A, 84000, Company F7, Negotiation, 168, 500, Software
+2025-06-08, South India, Product B, 53000, Company F8, Proposal, 106, 500, Hardware
+2025-06-09, North America, Product C, 60000, Company F9, Closed Won, 120, 500, Service
+2025-06-10, Europe, Product A, 96000, Company F10, Closed Won, 192, 500, Software
+2025-06-11, Asia, Product B, 59000, Company F11, Negotiation, 118, 500, Hardware
+2025-06-12, South India, Product C, 46000, Company F12, Proposal, 92, 500, Service
+2025-06-13, North America, Product A, 83000, Company F13, Closed Won, 166, 500, Software
+2025-06-14, Europe, Product B, 82000, Company F14, Closed Won, 164, 500, Hardware
+2025-06-15, Asia, Product C, 35000, Company F15, Closed Lost, 70, 500, Service
+2025-06-16, South India, Product A, 58000, Company F16, Negotiation, 116, 500, Software
+2025-06-17, North America, Product B, 66000, Company F17, Proposal, 132, 500, Hardware
+2025-06-18, Europe, Product C, 82000, Company F18, Closed Won, 164, 500, Service
+2025-06-19, Asia, Product A, 85000, Company F19, Closed Won, 170, 500, Software
+2025-06-20, South India, Product B, 64000, Company F20, Negotiation, 128, 500, Hardware
+2025-07-01, North America, Product A, 57000, Company G1, Closed Won, 114, 500, Software
+2025-07-02, Europe, Product B, 78000, Company G2, Negotiation, 156, 500, Hardware
+2025-07-03, Asia, Product C, 36000, Company G3, Proposal, 72, 500, Service
+2025-07-04, South India, Product A, 52000, Company G4, Closed Won, 104, 500, Software
+2025-07-05, North America, Product B, 75000, Company G5, Closed Lost, 150, 500, Hardware
+2025-07-06, Europe, Product C, 77000, Company G6, Closed Won, 154, 500, Service
+2025-07-07, Asia, Product A, 86000, Company G7, Negotiation, 172, 500, Software
+2025-07-08, South India, Product B, 52000, Company G8, Proposal, 104, 500, Hardware
+2025-07-09, North America, Product C, 61000, Company G9, Closed Won, 122, 500, Service
+2025-07-10, Europe, Product A, 97000, Company G10, Closed Won, 194, 500, Software
+2025-07-11, Asia, Product B, 58000, Company G11, Negotiation, 116, 500, Hardware
+2025-07-12, South India, Product C, 47000, Company G12, Proposal, 94, 500, Service
+2025-07-13, North America, Product A, 82000, Company G13, Closed Won, 164, 500, Software
+2025-07-14, Europe, Product B, 83000, Company G14, Closed Won, 166, 500, Hardware
+2025-07-15, Asia, Product C, 36000, Company G15, Closed Lost, 72, 500, Service
+2025-07-16, South India, Product A, 59000, Company G16, Negotiation, 118, 500, Software
+2025-07-17, North America, Product B, 67000, Company G17, Proposal, 134, 500, Hardware
+2025-07-18, Europe, Product C, 81000, Company G18, Closed Won, 162, 500, Service
+2025-07-19, Asia, Product A, 87000, Company G19, Closed Won, 174, 500, Software
+2025-07-20, South India, Product B, 65000, Company G20, Negotiation, 130, 500, Hardware
+2025-08-01, North America, Product A, 58000, Company H1, Closed Won, 116, 500, Software
+2025-08-02, Europe, Product B, 79000, Company H2, Negotiation, 158, 500, Hardware
+2025-08-03, Asia, Product C, 37000, Company H3, Proposal, 74, 500, Service
+2025-08-04, South India, Product A, 53000, Company H4, Closed Won, 106, 500, Software
+2025-08-05, North America, Product B, 76000, Company H5, Closed Lost, 152, 500, Hardware
+2025-08-06, Europe, Product C, 76000, Company H6, Closed Won, 152, 500, Service
+2025-08-07, Asia, Product A, 88000, Company H7, Negotiation, 176, 500, Software
+2025-08-08, South India, Product B, 51000, Company H8, Proposal, 102, 500, Hardware
+2025-08-09, North America, Product C, 62000, Company H9, Closed Won, 124, 500, Service
+2025-08-10, Europe, Product A, 98000, Company H10, Closed Won, 196, 500, Software
+2025-08-11, Asia, Product B, 57000, Company H11, Negotiation, 114, 500, Hardware
+2025-08-12, South India, Product C, 48000, Company H12, Proposal, 96, 500, Service
+2025-08-13, North America, Product A, 81000, Company H13, Closed Won, 162, 500, Software
+2025-08-14, Europe, Product B, 84000, Company H14, Closed Won, 168, 500, Hardware
+2025-08-15, Asia, Product C, 38000, Company H15, Closed Lost, 76, 500, Service
+2025-08-16, South India, Product A, 60000, Company H16, Negotiation, 120, 500, Software
+2025-08-17, North America, Product B, 68000, Company H17, Proposal, 136, 500, Hardware
+2025-08-18, Europe, Product C, 80000, Company H18, Closed Won, 160, 500, Service
+2025-08-19, Asia, Product A, 89000, Company H19, Closed Won, 178, 500, Software
+2025-08-20, South India, Product B, 66000, Company H20, Negotiation, 132, 500, Hardware
+2025-09-01, North America, Product A, 59000, Company I1, Closed Won, 118, 500, Software
+2025-09-02, Europe, Product B, 80000, Company I2, Negotiation, 160, 500, Hardware
+2025-09-03, Asia, Product C, 39000, Company I3, Proposal, 78, 500, Service
+2025-09-04, South India, Product A, 54000, Company I4, Closed Won, 108, 500, Software
+2025-09-05, North America, Product B, 77000, Company I5, Closed Lost, 154, 500, Hardware
+2025-09-06, Europe, Product C, 75000, Company I6, Closed Won, 150, 500, Service
+2025-09-07, Asia, Product A, 90000, Company I7, Negotiation, 180, 500, Software
+2025-09-08, South India, Product B, 50000, Company I8, Proposal, 100, 500, Hardware
+2025-09-09, North America, Product C, 63000, Company I9, Closed Won, 126, 500, Service
+2025-09-10, Europe, Product A, 99000, Company I10, Closed Won, 198, 500, Software
+2025-09-11, Asia, Product B, 56000, Company I11, Negotiation, 112, 500, Hardware
+2025-09-12, South India, Product C, 49000, Company I12, Proposal, 98, 500, Service
+2025-09-13, North America, Product A, 80000, Company I13, Closed Won, 160, 500, Software
+2025-09-14, Europe, Product B, 85000, Company I14, Closed Won, 170, 500, Hardware
+2025-09-15, Asia, Product C, 39000, Company I15, Closed Lost, 78, 500, Service
+2025-09-16, South India, Product A, 61000, Company I16, Negotiation, 122, 500, Software
+2025-09-17, North America, Product B, 69000, Company I17, Proposal, 138, 500, Hardware
+2025-09-18, Europe, Product C, 79000, Company I18, Closed Won, 158, 500, Service
+2025-09-19, Asia, Product A, 91000, Company I19, Closed Won, 182, 500, Software
+2025-09-20, South India, Product B, 67000, Company I20, Negotiation, 134, 500, Hardware
+2025-10-01, North America, Product A, 60000, Company J1, Closed Won, 120, 500, Software
+2025-10-02, Europe, Product B, 81000, Company J2, Negotiation, 162, 500, Hardware
+2025-10-03, Asia, Product C, 40000, Company J3, Proposal, 80, 500, Service
+2025-10-04, South India, Product A, 55000, Company J4, Closed Won, 110, 500, Software
+2025-10-05, North America, Product B, 78000, Company J5, Closed Lost, 156, 500, Hardware
+2025-10-06, Europe, Product C, 74000, Company J6, Closed Won, 148, 500, Service
+2025-10-07, Asia, Product A, 92000, Company J7, Negotiation, 184, 500, Software
+2025-10-08, South India, Product B, 49000, Company J8, Proposal, 98, 500, Hardware
+2025-10-09, North America, Product C, 64000, Company J9, Closed Won, 128, 500, Service
+2025-10-10, Europe, Product A, 100000, Company J10, Closed Won, 200, 500, Software
+2025-10-11, Asia, Product B, 55000, Company J11, Negotiation, 110, 500, Hardware
+2025-10-12, South India, Product C, 50000, Company J12, Proposal, 100, 500, Service
+2025-10-13, North America, Product A, 79000, Company J13, Closed Won, 158, 500, Software
+2025-10-14, Europe, Product B, 86000, Company J14, Closed Won, 172, 500, Hardware
+2025-10-15, Asia, Product C, 40000, Company J15, Closed Lost, 80, 500, Service
+2025-10-16, South India, Product A, 62000, Company J16, Negotiation, 124, 500, Software
+2025-10-17, North America, Product B, 70000, Company J17, Proposal, 140, 500, Hardware
+2025-10-18, Europe, Product C, 78000, Company J18, Closed Won, 156, 500, Service
+2025-10-19, Asia, Product A, 93000, Company J19, Closed Won, 186, 500, Software
+2025-10-20, South India, Product B, 68000, Company J20, Negotiation, 136, 500, Hardware

@@ -675,6 +675,51 @@ def handle_query():
             
             if len(sales_data) > max_records:
                 full_data_text += f"\n[Note: Showing first {max_records} of {len(sales_data)} total records]\n"
+
+        # Pre-compute key metrics so the AI doesn't have to do arithmetic
+        precomputed = ""
+        if data_summary['metrics_available']['revenue']:
+            precomputed += f"\n• Total Revenue (pre-computed, verified): ₹{data_summary['total_revenue']:,.2f}"
+            precomputed += f"\n• Average Revenue per record: ₹{data_summary['avg_revenue']:,.2f}"
+            precomputed += f"\n• Number of records: {data_summary['record_count']}"
+
+        # Revenue by region
+        region_rev = {}
+        product_rev = {}
+        for record in sales_data:
+            if 'data' not in record:
+                continue
+            d = record['data']
+            rev_key = first_matching_key(d, 'revenue')
+            rev_val = to_float(d.get(rev_key)) if rev_key else None
+            if rev_val is None:
+                p_key = first_matching_key(d, 'price')
+                q_key = first_matching_key(d, 'quantity')
+                if p_key and q_key:
+                    pv = to_float(d.get(p_key))
+                    qv = to_float(d.get(q_key))
+                    if pv is not None and qv is not None:
+                        rev_val = pv * qv
+            if rev_val is None:
+                continue
+            r_key = first_matching_key(d, 'region')
+            if r_key:
+                rname = str(d[r_key]).strip()
+                region_rev[rname] = region_rev.get(rname, 0) + rev_val
+            pr_key = first_matching_key(d, 'product')
+            if pr_key:
+                pname = str(d[pr_key]).strip()
+                product_rev[pname] = product_rev.get(pname, 0) + rev_val
+
+        if region_rev:
+            precomputed += "\n\n• Revenue by Region (pre-computed):"
+            for rg, rv in sorted(region_rev.items(), key=lambda x: -x[1]):
+                precomputed += f"\n  - {rg}: ₹{rv:,.2f}"
+
+        if product_rev:
+            precomputed += "\n\n• Revenue by Product (pre-computed):"
+            for pr, rv in sorted(product_rev.items(), key=lambda x: -x[1]):
+                precomputed += f"\n  - {pr}: ₹{rv:,.2f}"
         
         # Create prompt for Gemini with COMPLETE data
         prompt = f"""You are a Sales Analytics Agent.
@@ -689,6 +734,10 @@ ABSOLUTE RULES (VIOLATION = FAILURE):
 5. Every number you mention MUST be directly from or calculated from the dataset below
 6. Show your calculation when providing totals or averages
 7. Use Indian Rupee (₹) for all revenue/currency values
+8. For totals, averages, sums, and breakdowns: ALWAYS use the PRE-COMPUTED VALUES below. They are mathematically verified and authoritative. Do NOT re-calculate them yourself.
+
+PRE-COMPUTED VERIFIED METRICS (use these directly, do not recalculate):
+{precomputed}
 
 COMPLETE DATASET ({data_summary['record_count']} records):
 {full_data_text}
@@ -700,8 +749,8 @@ USER QUESTION: {query}
 AVAILABLE VISUALIZATIONS: {list(charts.keys()) if charts else 'None generated'}
 
 RESPONSE FORMAT:
+- For questions about totals, sums, averages, or breakdowns: use the PRE-COMPUTED VERIFIED METRICS above directly
 - Answer based ONLY on the exact data above
-- For calculations, show: which rows/values you used
 - Be concise but accurate
 - Use bullet points for clarity
 

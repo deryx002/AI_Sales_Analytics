@@ -44,6 +44,13 @@ build/
 *.xlsx
 *.xls
 
+# Allow sample data folder
+!sample_data/
+!sample_data/*.csv
+!sample_data/*.xlsx
+!sample_data/*.xls
+
+
 # ===============================
 # Secrets
 # ===============================

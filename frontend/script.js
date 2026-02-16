@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://ai-sales-analytics.onrender.com/api';
 
 // DOM Elements
 const fileInput = document.getElementById('fileInput');

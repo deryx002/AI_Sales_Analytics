@@ -8,7 +8,9 @@ const fileInfo = document.getElementById('fileInfo');
 const chatMessages = document.getElementById('chatMessages');
 const userInput = document.getElementById('userInput');
 const statusIndicator = document.getElementById('statusIndicator');
-const statusDot = document.querySelector('.status-dot');
+const statusDot = document.getElementById('statusDot');
+const statusLoader = document.getElementById('statusLoader');
+const statusText = document.getElementById('statusText');
 
 // State
 let selectedFile = null;
@@ -117,13 +119,23 @@ async function checkBackendStatus() {
 }
 
 function setStatus(status, message) {
-    const statusText = statusIndicator.querySelector('span:last-child');
-    
     if (status === 'online') {
+        // Hide loader, show green dot
+        statusLoader.style.display = 'none';
+        statusDot.style.display = 'inline-block';
         statusDot.style.background = '#48bb78';
         statusText.textContent = message || 'Connected';
         statusText.style.color = '#48bb78';
+    } else if (status === 'loading') {
+        // Show loader, hide dot
+        statusLoader.style.display = 'flex';
+        statusDot.style.display = 'none';
+        statusText.textContent = message || 'Initializing Backend';
+        statusText.style.color = '#666';
     } else {
+        // Offline – red dot, no loader
+        statusLoader.style.display = 'none';
+        statusDot.style.display = 'inline-block';
         statusDot.style.background = '#f56565';
         statusText.textContent = message || 'Disconnected';
         statusText.style.color = '#f56565';

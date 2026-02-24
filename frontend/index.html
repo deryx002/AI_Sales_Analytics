@@ -23,8 +23,15 @@
                     <span class="slider"></span>
                 </label>
                 <div class="status" id="statusIndicator">
-                    <span class="status-dot"></span>
-                    <span>Ready</span>
+                    <div class="loader-box" id="statusLoader">
+                        <div class="loading-wrapper">
+                            <div class="loader">
+                                <div class="loader-inner"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="status-dot" id="statusDot" style="display:none;"></span>
+                    <span id="statusText">Initializing Backend</span>
                 </div>
             </div>
         </header>
@@ -191,7 +198,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>Simple Sales Analytics Agent • No Database Required • Uses In-Memory Storage</p>
+            <p>&copy;Team Abscond. 2026 <br>Simple Sales Analytics Agent • No Database Required • Uses In-Memory Storage</p>
         </footer>
     </div>
 

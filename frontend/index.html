@@ -131,67 +131,114 @@
             <div class="right-panel">
                 
                 <div class="card chat-card">
-                    <div class="chat-header-row">
-                        <h2><i class="fas fa-robot"></i> Sales Assistant</h2>
-                        <button id="clearChatBtn" onclick="clearChat()">Clear Chat</button>
-                    </div>
-                    <p class="subtitle">Ask questions about your sales data</p>
-                    
-                    <!-- Chat Messages -->
-                    <div class="chat-messages" id="chatMessages">
-                        <div class="message bot">
-                            <div class="avatar">
-                                <i class="fas fa-robot"></i>
-                            </div>
-                            <div class="content">
-                                <div class="name">Sales Assistant</div>
-                                <p>Hello! I can help you analyze your sales data.</p>
-                                <p>To get started:</p>
-                                <ol>
-                                    <li>Upload your sales data (CSV or Excel) using the left panel</li>
-                                    <li>Then ask me questions like:</li>
-                                    <ul>
-                                        <li>"What is our total revenue?"</li>
-                                        <li>"Show sales by region"</li>
-                                        <li>"What are the top products?"</li>
-                                        <li>"Any trends in the data?"</li>
-                                    </ul>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Quick Questions -->
-                    <div class="quick-questions">
-                        <p>Try asking:</p>
-                        <div class="question-chips">
-                            <button class="chip" onclick="askQuestion('What is the total revenue?')">
-                                Total Revenue
-                            </button>
-                            <button class="chip" onclick="askQuestion('Which region has highest sales?')">
-                                Top Region
-                            </button>
-                            <button class="chip" onclick="askQuestion('Show product performance')">
-                                Product Performance
-                            </button>
-                            <button class="chip" onclick="askQuestion('Any sales trends?')">
-                                Sales Trends
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Input Area -->
-                    <div class="input-area">
-                        <input 
-                            type="text" 
-                            id="userInput" 
-                            placeholder="Type your question here..."
-                            onkeypress="handleKeyPress(event)"
-                        >
-                        <button class="btn btn-primary" onclick="sendMessage()">
-                            <i class="fas fa-paper-plane"></i> Ask
+                    <!-- Tab Toggle -->
+                    <div class="tab-toggle">
+                        <button class="tab-btn active" id="tabChat" onclick="switchTab('chat')">
+                            <i class="fas fa-comments"></i> Chat & Query
+                        </button>
+                        <button class="tab-btn" id="tabPredictions" onclick="switchTab('predictions')">
+                            <i class="fas fa-crystal-ball"></i> Predictions
                         </button>
                     </div>
+
+                    <!-- ===== CHAT TAB ===== -->
+                    <div class="tab-content active" id="chatTab">
+                        <div class="chat-header-row">
+                            <h2><i class="fas fa-robot"></i> Sales Assistant</h2>
+                            <button id="clearChatBtn" onclick="clearChat()">Clear Chat</button>
+                        </div>
+                        <p class="subtitle">Ask questions about your sales data</p>
+                        
+                        <!-- Chat Messages -->
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="message bot">
+                                <div class="avatar">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <div class="content">
+                                    <div class="name">Sales Assistant</div>
+                                    <p>Hello! I can help you analyze your sales data.</p>
+                                    <p>To get started:</p>
+                                    <ol>
+                                        <li>Upload your sales data (CSV or Excel) using the left panel</li>
+                                        <li>Then ask me questions like:</li>
+                                        <ul>
+                                            <li>"What is our total revenue?"</li>
+                                            <li>"Show sales by region"</li>
+                                            <li>"What are the top products?"</li>
+                                            <li>"Any trends in the data?"</li>
+                                        </ul>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Questions -->
+                        <div class="quick-questions">
+                            <p>Try asking:</p>
+                            <div class="question-chips">
+                                <button class="chip" onclick="askQuestion('What is the total revenue?')">
+                                    Total Revenue
+                                </button>
+                                <button class="chip" onclick="askQuestion('Which region has highest sales?')">
+                                    Top Region
+                                </button>
+                                <button class="chip" onclick="askQuestion('Show product performance')">
+                                    Product Performance
+                                </button>
+                                <button class="chip" onclick="askQuestion('Any sales trends?')">
+                                    Sales Trends
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Input Area -->
+                        <div class="input-area">
+                            <input 
+                                type="text" 
+                                id="userInput" 
+                                placeholder="Type your question here..."
+                                onkeypress="handleKeyPress(event)"
+                            >
+                            <button class="btn btn-primary" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane"></i> Ask
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ===== PREDICTIONS TAB ===== -->
+                    <div class="tab-content" id="predictionsTab">
+                        <div class="predictions-header">
+                            <h2><i class="fas fa-chart-line"></i> Predictions & Insights</h2>
+                            <button class="btn-refresh" onclick="loadPredictions()" id="refreshPredictionsBtn" title="Refresh predictions">
+                                <i class="fas fa-sync-alt"></i> Generate
+                            </button>
+                        </div>
+                        <p class="subtitle">AI-powered predictions, alternatives & improvement strategies</p>
+
+                        <!-- Predictions Loading -->
+                        <div class="predictions-loading" id="predictionsLoading" style="display:none;">
+                            <div class="loader-box">
+                                <div class="loading-wrapper">
+                                    <div class="loader"><div class="loader-inner"></div></div>
+                                </div>
+                            </div>
+                            <p>Generating predictions with AI...</p>
+                        </div>
+
+                        <!-- Predictions Empty State -->
+                        <div class="predictions-empty" id="predictionsEmpty">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h3>No Data Loaded</h3>
+                            <p>Upload a CSV/Excel file first, then switch here to see AI-generated predictions, alternative strategies, and improvement recommendations.</p>
+                        </div>
+
+                        <!-- Predictions Content -->
+                        <div class="predictions-content" id="predictionsContent" style="display:none;">
+                            <!-- Sections rendered dynamically by JS -->
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>

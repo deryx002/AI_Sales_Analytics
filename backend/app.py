@@ -996,6 +996,193 @@ def get_sample(filename):
     })
 
 
+@app.route('/api/predictions', methods=['GET'])
+def get_predictions():
+    """Generate comprehensive predictions, alternatives, and improvement suggestions"""
+    try:
+        if not sales_data:
+            return jsonify({
+                'available': False,
+                'message': 'No data loaded. Please upload a CSV or Excel file first.'
+            })
+
+        data_summary = extract_sales_insights(sales_data)
+        product_insights = get_product_insights(sales_data)
+
+        # Build full data text for Gemini (limit to 500 records)
+        full_data_text = ""
+        max_records = min(len(sales_data), 500)
+        for i, record in enumerate(sales_data[:max_records]):
+            if 'data' in record:
+                full_data_text += f"Row {i+1}: {json.dumps(record['data'])}\n"
+
+        # Precompute metrics
+        precomputed = f"Total Records: {data_summary['record_count']}"
+        if data_summary['metrics_available']['revenue']:
+            precomputed += f"\nTotal Revenue: ₹{data_summary['total_revenue']:,.2f}"
+            precomputed += f"\nAverage Revenue per record: ₹{data_summary['avg_revenue']:,.2f}"
+        if data_summary['regions']:
+            precomputed += f"\nRegions: {', '.join(data_summary['regions'])}"
+        if data_summary['products']:
+            precomputed += f"\nProducts: {', '.join(data_summary['products'])}"
+
+        # Revenue breakdowns
+        region_rev = {}
+        product_rev = {}
+        for record in sales_data:
+            if 'data' not in record:
+                continue
+            d = record['data']
+            rev_key = first_matching_key(d, 'revenue')
+            rev_val = to_float(d.get(rev_key)) if rev_key else None
+            if rev_val is None:
+                p_key = first_matching_key(d, 'price')
+                q_key = first_matching_key(d, 'quantity')
+                if p_key and q_key:
+                    pv = to_float(d.get(p_key))
+                    qv = to_float(d.get(q_key))
+                    if pv is not None and qv is not None:
+                        rev_val = pv * qv
+            if rev_val is None:
+                continue
+            r_key = first_matching_key(d, 'region')
+            if r_key:
+                rname = str(d[r_key]).strip()
+                region_rev[rname] = region_rev.get(rname, 0) + rev_val
+            pr_key = first_matching_key(d, 'product')
+            if pr_key:
+                pname = str(d[pr_key]).strip()
+                product_rev[pname] = product_rev.get(pname, 0) + rev_val
+
+        if region_rev:
+            precomputed += "\n\nRevenue by Region:"
+            for rg, rv in sorted(region_rev.items(), key=lambda x: -x[1]):
+                precomputed += f"\n  - {rg}: ₹{rv:,.2f}"
+        if product_rev:
+            precomputed += "\n\nRevenue by Product:"
+            for pr, rv in sorted(product_rev.items(), key=lambda x: -x[1]):
+                precomputed += f"\n  - {pr}: ₹{rv:,.2f}"
+
+        prompt = f"""You are an expert Sales Analytics & Strategy AI.
+
+Analyze this sales dataset and provide a COMPREHENSIVE prediction & improvement report.
+
+DATASET SUMMARY:
+{precomputed}
+
+COLUMNS AVAILABLE: {', '.join(data_summary['columns'])}
+
+COMPLETE DATA ({data_summary['record_count']} records):
+{full_data_text}
+
+Respond in STRICT JSON with this exact structure (no markdown, no code fences):
+{{
+  "sales_forecast": {{
+    "title": "Sales Forecast",
+    "items": [
+      {{
+        "label": "short title",
+        "value": "predicted value or key metric",
+        "detail": "1-2 sentence explanation",
+        "trend": "up|down|stable",
+        "confidence": "High|Medium|Low"
+      }}
+    ]
+  }},
+  "product_predictions": {{
+    "title": "Product Predictions",
+    "items": [
+      {{
+        "label": "product-related prediction title",
+        "value": "predicted value",
+        "detail": "explanation",
+        "trend": "up|down|stable",
+        "confidence": "High|Medium|Low"
+      }}
+    ]
+  }},
+  "regional_predictions": {{
+    "title": "Regional Predictions",
+    "items": [
+      {{
+        "label": "region-related prediction title",
+        "value": "predicted value",
+        "detail": "explanation",
+        "trend": "up|down|stable",
+        "confidence": "High|Medium|Low"
+      }}
+    ]
+  }},
+  "alternatives": {{
+    "title": "Alternative Strategies",
+    "items": [
+      {{
+        "label": "strategy title",
+        "detail": "what to do and why",
+        "impact": "High|Medium|Low",
+        "category": "pricing|marketing|product|distribution|customer"
+      }}
+    ]
+  }},
+  "improvements": {{
+    "title": "Sales Improvement Recommendations",
+    "items": [
+      {{
+        "label": "improvement title",
+        "detail": "specific actionable recommendation with expected outcome",
+        "impact": "High|Medium|Low",
+        "category": "pricing|marketing|product|distribution|customer",
+        "expected_boost": "estimated % or value improvement"
+      }}
+    ]
+  }}
+}}
+
+RULES:
+1. Use ONLY the data provided - do not invent numbers
+2. Use Indian Rupees (₹) for currency
+3. Provide 3-5 items per section
+4. If a category (regions/products) is not in the data, adapt that section to what IS available
+5. Be specific and actionable - reference actual products, regions, and numbers from the data
+6. Output ONLY valid JSON, no extra text"""
+
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt
+        )
+
+        text = (response.text or '').strip()
+        if text.startswith('```'):
+            text = text.strip('`')
+            if text.startswith('json'):
+                text = text[4:].strip()
+
+        predictions = json.loads(text)
+
+        return jsonify({
+            'available': True,
+            'predictions': predictions,
+            'data_summary': {
+                'total_records': data_summary['record_count'],
+                'total_revenue': data_summary['total_revenue'],
+                'products': data_summary['products'],
+                'regions': data_summary['regions']
+            }
+        })
+
+    except json.JSONDecodeError:
+        return jsonify({
+            'available': False,
+            'message': 'Failed to parse AI predictions. Please try again.'
+        }), 500
+    except Exception as e:
+        print(f"Predictions error: {str(e)}")
+        return jsonify({
+            'available': False,
+            'message': f'Error generating predictions: {str(e)}'
+        }), 500
+
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({

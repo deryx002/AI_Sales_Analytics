@@ -17,13 +17,24 @@ let selectedFile = null;
 const productTrendCharts = {};
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    checkBackendStatus();
-    loadDataSummary();
-    loadSampleFiles();
+document.addEventListener('DOMContentLoaded', async () => {
     initThemeToggle();
     initGoTopButton();
     setupEventListeners();
+
+    // Clear all backend data on every page load to avoid stale Gemini API calls
+    try {
+        await fetch(`${API_BASE_URL}/clear`, { method: 'POST' });
+    } catch (e) {
+        // Backend may not be up yet — that's fine
+    }
+
+    // Reset predictions state
+    window._predictionsLoaded = false;
+    _predictionsCache = null;
+
+    checkBackendStatus();
+    loadSampleFiles();
 });
 
 // Go to Top button (mobile)
@@ -613,6 +624,18 @@ async function clearData() {
             
             // Add message to chat
             addMessage('All data has been cleared. You can upload new files to start fresh.', 'bot');
+
+            // Reset predictions tab
+            window._predictionsLoaded = false;
+            _predictionsCache = null;
+            const predContent = document.getElementById('predictionsContent');
+            const predEmpty = document.getElementById('predictionsEmpty');
+            if (predContent) predContent.style.display = 'none';
+            if (predEmpty) {
+                predEmpty.style.display = 'block';
+                predEmpty.querySelector('h3').textContent = 'No Data Loaded';
+                predEmpty.querySelector('p').textContent = 'Upload a CSV/Excel file first, then switch here to see AI-generated predictions, alternative strategies, and improvement recommendations.';
+            }
         }
     } catch (error) {
         console.error('Error clearing data:', error);
@@ -1123,4 +1146,146 @@ async function generateVisualizations() {
     } catch (error) {
         addMessage('Error generating visualizations. Make sure backend is running.', 'bot');
     }
+}
+
+// ============ TAB SWITCHING ============
+function switchTab(tab) {
+    // Update tab buttons
+    document.getElementById('tabChat').classList.toggle('active', tab === 'chat');
+    document.getElementById('tabPredictions').classList.toggle('active', tab === 'predictions');
+
+    // Update tab content
+    document.getElementById('chatTab').classList.toggle('active', tab === 'chat');
+    document.getElementById('predictionsTab').classList.toggle('active', tab === 'predictions');
+
+    // Auto-load predictions on first visit if data is available
+    if (tab === 'predictions' && !window._predictionsLoaded) {
+        const totalRecords = document.getElementById('totalRecords');
+        if (totalRecords && parseInt(totalRecords.textContent) > 0) {
+            loadPredictions();
+        }
+    }
+}
+
+// ============ PREDICTIONS ============
+let _predictionsCache = null;
+
+async function loadPredictions() {
+    const loadingEl = document.getElementById('predictionsLoading');
+    const emptyEl = document.getElementById('predictionsEmpty');
+    const contentEl = document.getElementById('predictionsContent');
+    const refreshBtn = document.getElementById('refreshPredictionsBtn');
+
+    // Show loading
+    loadingEl.style.display = 'flex';
+    emptyEl.style.display = 'none';
+    contentEl.style.display = 'none';
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Generating...';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/predictions`);
+        const result = await response.json();
+
+        if (!result.available) {
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'block';
+            emptyEl.querySelector('p').textContent = result.message || 'No data available for predictions.';
+            return;
+        }
+
+        _predictionsCache = result.predictions;
+        window._predictionsLoaded = true;
+        renderPredictions(result.predictions);
+
+        loadingEl.style.display = 'none';
+        contentEl.style.display = 'block';
+
+    } catch (error) {
+        console.error('Predictions error:', error);
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'block';
+        emptyEl.querySelector('h3').textContent = 'Error';
+        emptyEl.querySelector('p').textContent = 'Failed to generate predictions. Make sure the backend is running.';
+    } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+    }
+}
+
+function renderPredictions(predictions) {
+    const container = document.getElementById('predictionsContent');
+    container.innerHTML = '';
+
+    const sectionConfig = [
+        { key: 'sales_forecast', icon: 'fas fa-chart-line', cssClass: 'forecast' },
+        { key: 'product_predictions', icon: 'fas fa-box-open', cssClass: 'products' },
+        { key: 'regional_predictions', icon: 'fas fa-map-marker-alt', cssClass: 'regions' },
+        { key: 'alternatives', icon: 'fas fa-lightbulb', cssClass: 'alternatives' },
+        { key: 'improvements', icon: 'fas fa-rocket', cssClass: 'improvements' }
+    ];
+
+    sectionConfig.forEach(({ key, icon, cssClass }) => {
+        const section = predictions[key];
+        if (!section || !section.items || section.items.length === 0) return;
+
+        const sectionEl = document.createElement('div');
+        sectionEl.className = `pred-section ${cssClass}`;
+
+        let itemsHTML = '';
+        section.items.forEach(item => {
+            const badges = buildBadges(item);
+            itemsHTML += `
+                <div class="pred-item">
+                    <div class="pred-item-header">
+                        <div class="pred-item-label">${escapeHTML(item.label)}</div>
+                        ${item.value ? `<div class="pred-item-value">${escapeHTML(item.value)}</div>` : ''}
+                    </div>
+                    <div class="pred-item-detail">${escapeHTML(item.detail)}</div>
+                    <div class="pred-item-meta">${badges}</div>
+                </div>
+            `;
+        });
+
+        sectionEl.innerHTML = `
+            <div class="pred-section-title">
+                <i class="${icon}"></i> ${escapeHTML(section.title)}
+            </div>
+            ${itemsHTML}
+        `;
+
+        container.appendChild(sectionEl);
+    });
+
+    if (container.children.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:#a0aec0;padding:40px;">No predictions could be generated from this data.</p>';
+    }
+}
+
+function buildBadges(item) {
+    let html = '';
+    if (item.trend) {
+        const trendIcon = item.trend === 'up' ? 'fa-arrow-up' : item.trend === 'down' ? 'fa-arrow-down' : 'fa-minus';
+        html += `<span class="pred-badge trend-${item.trend}"><i class="fas ${trendIcon}"></i> ${item.trend}</span>`;
+    }
+    if (item.confidence) {
+        html += `<span class="pred-badge confidence-${item.confidence.toLowerCase()}">${item.confidence} confidence</span>`;
+    }
+    if (item.impact) {
+        html += `<span class="pred-badge impact-${item.impact.toLowerCase()}"><i class="fas fa-bolt"></i> ${item.impact} impact</span>`;
+    }
+    if (item.category) {
+        html += `<span class="pred-badge category"><i class="fas fa-tag"></i> ${item.category}</span>`;
+    }
+    if (item.expected_boost) {
+        html += `<span class="pred-badge boost"><i class="fas fa-chart-line"></i> ${escapeHTML(item.expected_boost)}</span>`;
+    }
+    return html;
+}
+
+function escapeHTML(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
 }

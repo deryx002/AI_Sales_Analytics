@@ -460,7 +460,7 @@ def get_product_insights(data):
 
         date_key = first_matching_key(data_dict, 'date')
         if date_key:
-            parsed_date = pd.to_datetime(str(data_dict.get(date_key)).strip(), errors='coerce')
+            parsed_date = pd.to_datetime(str(data_dict.get(date_key)).strip(), errors='coerce', dayfirst=True)
             if not pd.isna(parsed_date):
                 all_dates.add(parsed_date)
                 if revenue_val is not None:

@@ -1020,33 +1020,43 @@ def get_predictions():
         top_products = summary['products'][:5]
         top_regions = summary['regions'][:5]
 
+        # Strict allowed lists
+        allowed_products = ', '.join(top_products) if top_products else 'None'
+        allowed_regions = ', '.join(top_regions) if top_regions else 'None'
+
         prompt = f"""
 You are a Sales Strategy & Forecasting AI.
 
-You MUST ONLY use the metrics provided below.
-DO NOT invent numbers.
+CRITICAL DATA RULES (MUST FOLLOW):
+1. You are ONLY allowed to reference these exact product names:
+{allowed_products}
+
+2. You are ONLY allowed to reference these exact region names:
+{allowed_regions}
+
+3. If you mention any product or region not in the lists above, your response is INVALID.
+4. Do NOT invent products, regions, or numbers.
+5. Use ONLY the aggregated metrics provided below.
 
 AGGREGATED SALES METRICS:
 - Total Records: {summary['record_count']}
 - Total Revenue: ₹{summary['total_revenue']:,.2f}
 - Average Revenue per record: ₹{summary['avg_revenue']:,.2f}
 
-AVAILABLE DIMENSIONS:
-- Products: {', '.join(top_products) if top_products else 'Not available'}
-- Regions: {', '.join(top_regions) if top_regions else 'Not available'}
-
 PRODUCT INSIGHTS:
 {json.dumps(product_insights, indent=2)}
 
 TASK:
-Generate strategic predictions, risks, and improvement suggestions.
+Generate structured sales predictions and improvement suggestions.
 
 RESPONSE RULES:
-- Use ONLY the metrics above
+- Use ONLY the allowed product and region names
 - Use Indian Rupees (₹)
 - Be concise
 - 3–4 items per section
-- Output STRICT JSON ONLY (no markdown)
+- Output STRICT JSON ONLY
+- No markdown
+- No explanations outside JSON
 
 JSON FORMAT:
 {{
@@ -1130,6 +1140,7 @@ JSON FORMAT:
             'available': False,
             'message': 'Prediction service failed. Please try again.'
         }), 500
+    
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({

@@ -1004,7 +1004,7 @@ def get_sample(filename):
 
 @app.route('/api/predictions', methods=['GET'])
 def get_predictions():
-    """Generate comprehensive predictions, alternatives, and improvement suggestions"""
+    """Memory-safe AI predictions using aggregated metrics only"""
     try:
         if not sales_data:
             return jsonify({
@@ -1012,84 +1012,51 @@ def get_predictions():
                 'message': 'No data loaded. Please upload a CSV or Excel file first.'
             })
 
-        data_summary = extract_sales_insights(sales_data)
+        # --- Aggregate metrics ---
+        summary = extract_sales_insights(sales_data)
         product_insights = get_product_insights(sales_data)
 
-        # Build full data text for Gemini (limit to 500 records)
-        full_data_text = ""
-        max_records = min(len(sales_data), 500)
-        for i, record in enumerate(sales_data[:max_records]):
-            if 'data' in record:
-                full_data_text += f"Row {i+1}: {json.dumps(record['data'])}\n"
+        # Limit lists (important for memory)
+        top_products = summary['products'][:5]
+        top_regions = summary['regions'][:5]
 
-        # Precompute metrics
-        precomputed = f"Total Records: {data_summary['record_count']}"
-        if data_summary['metrics_available']['revenue']:
-            precomputed += f"\nTotal Revenue: ₹{data_summary['total_revenue']:,.2f}"
-            precomputed += f"\nAverage Revenue per record: ₹{data_summary['avg_revenue']:,.2f}"
-        if data_summary['regions']:
-            precomputed += f"\nRegions: {', '.join(data_summary['regions'])}"
-        if data_summary['products']:
-            precomputed += f"\nProducts: {', '.join(data_summary['products'])}"
+        prompt = f"""
+You are a Sales Strategy & Forecasting AI.
 
-        # Revenue breakdowns
-        region_rev = {}
-        product_rev = {}
-        for record in sales_data:
-            if 'data' not in record:
-                continue
-            d = record['data']
-            rev_key = first_matching_key(d, 'revenue')
-            rev_val = to_float(d.get(rev_key)) if rev_key else None
-            if rev_val is None:
-                p_key = first_matching_key(d, 'price')
-                q_key = first_matching_key(d, 'quantity')
-                if p_key and q_key:
-                    pv = to_float(d.get(p_key))
-                    qv = to_float(d.get(q_key))
-                    if pv is not None and qv is not None:
-                        rev_val = pv * qv
-            if rev_val is None:
-                continue
-            r_key = first_matching_key(d, 'region')
-            if r_key:
-                rname = str(d[r_key]).strip()
-                region_rev[rname] = region_rev.get(rname, 0) + rev_val
-            pr_key = first_matching_key(d, 'product')
-            if pr_key:
-                pname = str(d[pr_key]).strip()
-                product_rev[pname] = product_rev.get(pname, 0) + rev_val
+You MUST ONLY use the metrics provided below.
+DO NOT invent numbers.
 
-        if region_rev:
-            precomputed += "\n\nRevenue by Region:"
-            for rg, rv in sorted(region_rev.items(), key=lambda x: -x[1]):
-                precomputed += f"\n  - {rg}: ₹{rv:,.2f}"
-        if product_rev:
-            precomputed += "\n\nRevenue by Product:"
-            for pr, rv in sorted(product_rev.items(), key=lambda x: -x[1]):
-                precomputed += f"\n  - {pr}: ₹{rv:,.2f}"
+AGGREGATED SALES METRICS:
+- Total Records: {summary['record_count']}
+- Total Revenue: ₹{summary['total_revenue']:,.2f}
+- Average Revenue per record: ₹{summary['avg_revenue']:,.2f}
 
-        prompt = f"""You are an expert Sales Analytics & Strategy AI.
+AVAILABLE DIMENSIONS:
+- Products: {', '.join(top_products) if top_products else 'Not available'}
+- Regions: {', '.join(top_regions) if top_regions else 'Not available'}
 
-Analyze this sales dataset and provide a COMPREHENSIVE prediction & improvement report.
+PRODUCT INSIGHTS:
+{json.dumps(product_insights, indent=2)}
 
-DATASET SUMMARY:
-{precomputed}
+TASK:
+Generate strategic predictions, risks, and improvement suggestions.
 
-COLUMNS AVAILABLE: {', '.join(data_summary['columns'])}
+RESPONSE RULES:
+- Use ONLY the metrics above
+- Use Indian Rupees (₹)
+- Be concise
+- 3–4 items per section
+- Output STRICT JSON ONLY (no markdown)
 
-COMPLETE DATA ({data_summary['record_count']} records):
-{full_data_text}
-
-Respond in STRICT JSON with this exact structure (no markdown, no code fences):
+JSON FORMAT:
 {{
   "sales_forecast": {{
     "title": "Sales Forecast",
     "items": [
       {{
-        "label": "short title",
-        "value": "predicted value or key metric",
-        "detail": "1-2 sentence explanation",
+        "label": "Forecast title",
+        "value": "Predicted value",
+        "detail": "Explanation",
         "trend": "up|down|stable",
         "confidence": "High|Medium|Low"
       }}
@@ -1099,9 +1066,9 @@ Respond in STRICT JSON with this exact structure (no markdown, no code fences):
     "title": "Product Predictions",
     "items": [
       {{
-        "label": "product-related prediction title",
-        "value": "predicted value",
-        "detail": "explanation",
+        "label": "Product insight",
+        "value": "Metric",
+        "detail": "Explanation",
         "trend": "up|down|stable",
         "confidence": "High|Medium|Low"
       }}
@@ -1111,22 +1078,11 @@ Respond in STRICT JSON with this exact structure (no markdown, no code fences):
     "title": "Regional Predictions",
     "items": [
       {{
-        "label": "region-related prediction title",
-        "value": "predicted value",
-        "detail": "explanation",
+        "label": "Region insight",
+        "value": "Metric",
+        "detail": "Explanation",
         "trend": "up|down|stable",
         "confidence": "High|Medium|Low"
-      }}
-    ]
-  }},
-  "alternatives": {{
-    "title": "Alternative Strategies",
-    "items": [
-      {{
-        "label": "strategy title",
-        "detail": "what to do and why",
-        "impact": "High|Medium|Low",
-        "category": "pricing|marketing|product|distribution|customer"
       }}
     ]
   }},
@@ -1134,23 +1090,14 @@ Respond in STRICT JSON with this exact structure (no markdown, no code fences):
     "title": "Sales Improvement Recommendations",
     "items": [
       {{
-        "label": "improvement title",
-        "detail": "specific actionable recommendation with expected outcome",
-        "impact": "High|Medium|Low",
-        "category": "pricing|marketing|product|distribution|customer",
-        "expected_boost": "estimated % or value improvement"
+        "label": "Improvement idea",
+        "detail": "Actionable recommendation",
+        "impact": "High|Medium|Low"
       }}
     ]
   }}
 }}
-
-RULES:
-1. Use ONLY the data provided - do not invent numbers
-2. Use Indian Rupees (₹) for currency
-3. Provide 3-5 items per section
-4. If a category (regions/products) is not in the data, adapt that section to what IS available
-5. Be specific and actionable - reference actual products, regions, and numbers from the data
-6. Output ONLY valid JSON, no extra text"""
+"""
 
         response = client.models.generate_content(
             model=model_name,
@@ -1158,11 +1105,11 @@ RULES:
         )
 
         text = (response.text or '').strip()
-        # Strip markdown code fences robustly
-        import re as _re
-        text = _re.sub(r'^```(?:json)?\s*', '', text)
-        text = _re.sub(r'\s*```$', '', text)
-        text = text.strip()
+
+        # Clean Gemini output safely
+        import re
+        text = re.sub(r'^```(?:json)?\s*', '', text)
+        text = re.sub(r'\s*```$', '', text)
 
         predictions = json.loads(text)
 
@@ -1170,28 +1117,19 @@ RULES:
             'available': True,
             'predictions': predictions,
             'data_summary': {
-                'total_records': data_summary['record_count'],
-                'total_revenue': data_summary['total_revenue'],
-                'products': data_summary['products'],
-                'regions': data_summary['regions']
+                'total_records': summary['record_count'],
+                'total_revenue': summary['total_revenue'],
+                'products': top_products,
+                'regions': top_regions
             }
         })
 
-    except json.JSONDecodeError as je:
-        print(f"Predictions JSON parse error: {str(je)}")
-        print(f"Raw AI text: {text[:500] if text else '(empty)'}")
-        return jsonify({
-            'available': False,
-            'message': 'Failed to parse AI predictions. Please try again.'
-        }), 500
     except Exception as e:
-        print(f"Predictions error: {str(e)}")
+        print(f"Prediction error: {str(e)}")
         return jsonify({
             'available': False,
-            'message': f'Error generating predictions: {str(e)}'
+            'message': 'Prediction service failed. Please try again.'
         }), 500
-
-
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({

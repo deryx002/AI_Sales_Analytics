@@ -1187,10 +1187,18 @@ async function loadPredictions() {
         const response = await fetch(`${API_BASE_URL}/predictions`);
         const result = await response.json();
 
-        if (!result.available) {
+        if (!response.ok || !result.available) {
             loadingEl.style.display = 'none';
             emptyEl.style.display = 'block';
-            emptyEl.querySelector('p').textContent = result.message || 'No data available for predictions.';
+            const emptyH3 = emptyEl.querySelector('h3');
+            const emptyP = emptyEl.querySelector('p');
+            if (!response.ok) {
+                emptyH3.textContent = 'Generation Failed';
+                emptyP.textContent = result.message || 'AI could not generate predictions. Please try again.';
+            } else {
+                emptyH3.textContent = 'No Data';
+                emptyP.textContent = result.message || 'No data available for predictions.';
+            }
             return;
         }
 
@@ -1205,8 +1213,8 @@ async function loadPredictions() {
         console.error('Predictions error:', error);
         loadingEl.style.display = 'none';
         emptyEl.style.display = 'block';
-        emptyEl.querySelector('h3').textContent = 'Error';
-        emptyEl.querySelector('p').textContent = 'Failed to generate predictions. Make sure the backend is running.';
+        emptyEl.querySelector('h3').textContent = 'Connection Error';
+        emptyEl.querySelector('p').textContent = 'Could not reach the backend. Make sure it is running and try again.';
     } finally {
         refreshBtn.disabled = false;
         refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';

@@ -13,6 +13,7 @@ from visualization import SalesVisualizer
 load_dotenv()
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max upload
 CORS(app)
 
 api_key = os.getenv('GOOGLE_API_KEY')
@@ -386,10 +387,10 @@ Rules:
         )
 
         text = (response.text or '').strip()
-        if text.startswith('```'):
-            text = text.strip('`')
-            if text.startswith('json'):
-                text = text[4:].strip()
+        import re as _re
+        text = _re.sub(r'^```(?:json)?\s*', '', text)
+        text = _re.sub(r'\s*```$', '', text)
+        text = text.strip()
 
         parsed = json.loads(text)
         if isinstance(parsed, list):
@@ -588,6 +589,8 @@ def get_product_insights(data):
 def upload_data():
     """Handle file uploads"""
     try:
+        global sales_data
+
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
         
@@ -608,7 +611,7 @@ def upload_data():
         else:
             return jsonify({'error': f'Unsupported file type: {file_extension}'}), 400
         
-        sales_data.extend(records)
+        sales_data = records 
         
         file_history.append({
             'filename': file.filename,
@@ -667,8 +670,8 @@ def handle_query():
         full_data_text = ""
         if sales_data:
             # Include ALL records so AI can answer accurately
-            # Limit to 500 records to avoid token limits, but this covers most use cases
-            max_records = min(len(sales_data), 500)
+            # Limit to 200 records to avoid token limits, but this covers most use cases
+            max_records = min(len(sales_data), 200)
             for i, record in enumerate(sales_data[:max_records]):
                 if 'data' in record:
                     full_data_text += f"Row {i+1}: {json.dumps(record['data'])}\n"
@@ -960,6 +963,8 @@ def list_samples():
 @app.route('/api/samples/<path:filename>', methods=['GET'])
 def get_sample(filename):
     """Load a sample data file as if it were uploaded"""
+    global sales_data
+
     sample_dir = os.path.join(os.path.dirname(__file__), 'sample_data')
     fpath = os.path.join(sample_dir, filename)
     if not os.path.isfile(fpath):
@@ -976,7 +981,8 @@ def get_sample(filename):
     else:
         return jsonify({'error': f'Unsupported file type: {ext}'}), 400
 
-    sales_data.extend(records)
+    sales_data = records  # ✅ replace instead of extend
+
     file_history.append({
         'filename': filename,
         'type': ext,
@@ -1152,10 +1158,11 @@ RULES:
         )
 
         text = (response.text or '').strip()
-        if text.startswith('```'):
-            text = text.strip('`')
-            if text.startswith('json'):
-                text = text[4:].strip()
+        # Strip markdown code fences robustly
+        import re as _re
+        text = _re.sub(r'^```(?:json)?\s*', '', text)
+        text = _re.sub(r'\s*```$', '', text)
+        text = text.strip()
 
         predictions = json.loads(text)
 
@@ -1170,7 +1177,9 @@ RULES:
             }
         })
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as je:
+        print(f"Predictions JSON parse error: {str(je)}")
+        print(f"Raw AI text: {text[:500] if text else '(empty)'}")
         return jsonify({
             'available': False,
             'message': 'Failed to parse AI predictions. Please try again.'
@@ -1193,27 +1202,6 @@ def health_check():
         'files_uploaded': len(file_history)
     })
 
-if __name__ == '__main__':
-    print("=" * 50)
-    print("Sales Analytics Agent with Google GenAI")
-    print("=" * 50)
-    print(f"API Key: {'Set' if api_key else 'NOT SET!'}")
-    print(f"Model: {model_name}")
-    print(f"Visualization: Available")
-    print(f"Server: http://localhost:5000")
-    print("\nAvailable endpoints:")
-    print("  GET  /api/health")
-    print("  GET  /api/data/summary")
-    print("  GET  /api/visualizations")
-    print("  GET  /api/visualize/<chart_type>")
-    print("  GET  /api/samples")
-    print("  GET  /api/samples/<filename>")
-    print("  POST /api/upload")
-    print("  POST /api/query")
-    print("  POST /api/clear")
-    print("=" * 50)
-    
-    app.run(debug=True, port=5000, host='0.0.0.0')
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

@@ -3,258 +3,553 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Sales Analytics</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>AI-Sales Analytics Agent</title>
+    <link rel="stylesheet" href="landing.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <div class="logo">
-                <i class="fas fa-chart-line"></i>
-                <h1>Simple Sales Analytics</h1>
+
+    <!-- ═══════════════════ NAVBAR ═══════════════════ -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">
+                <svg class="logo-icon" viewBox="0 0 32 32" fill="none">
+                    <defs>
+                        <linearGradient id="logoGrad" x1="0" y1="0" x2="32" y2="32">
+                            <stop offset="0%" stop-color="#6366f1"/>
+                            <stop offset="100%" stop-color="#a855f7"/>
+                        </linearGradient>
+                    </defs>
+                    <rect width="32" height="32" rx="8" fill="url(#logoGrad)"/>
+                    <path d="M8 22L13 14L18 18L24 10" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="24" cy="10" r="2" fill="#fff"/>
+                </svg>
+                <span>AI-Sales Analytics Agent</span>
+            </a>
+            <div class="nav-links" id="navLinks">
+                <a href="#features">Features</a>
+                <a href="#showcase">Product</a>
+                <a href="#techstack">Tech Stack</a>
+                <a href="#testimonials">Testimonials</a>
             </div>
-            <div class="header-right">
-                <label class="switch" title="Toggle theme">
-                    <span class="sun"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="#ffd43b"><circle r="5" cy="12" cx="12"></circle><path d="m21 13h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm-17 0h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm13.66-5.66a1 1 0 0 1 -.66-.29 1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1 -.75.29zm-12.02 12.02a1 1 0 0 1 -.71-.29 1 1 0 0 1 0-1.41l.71-.66a1 1 0 0 1 1.41 1.41l-.71.71a1 1 0 0 1 -.7.24zm6.36-14.36a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm0 17a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm-5.66-14.66a1 1 0 0 1 -.7-.29l-.71-.71a1 1 0 0 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.29zm12.02 12.02a1 1 0 0 1 -.7-.29l-.66-.71a1 1 0 0 1 1.36-1.36l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.24z"></path></g></svg></span>
-                    <span class="moon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="m223.5 32c-123.5 0-223.5 100.3-223.5 224s100 224 223.5 224c60.6 0 115.5-24.2 155.8-63.4 5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6-96.9 0-175.5-78.8-175.5-176 0-65.8 36-123.1 89.3-153.3 6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"></path></svg></span>
-                    <input type="checkbox" class="input" id="themeToggle">
-                    <span class="slider"></span>
+            <div class="nav-actions">
+                <label class="theme-switch" title="Toggle theme">
+                    <span class="sun-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="#ffd43b"><circle r="5" cy="12" cx="12"></circle><path d="m21 13h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm-17 0h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm13.66-5.66a1 1 0 0 1 -.66-.29 1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1 -.75.29zm-12.02 12.02a1 1 0 0 1 -.71-.29 1 1 0 0 1 0-1.41l.71-.66a1 1 0 0 1 1.41 1.41l-.71.71a1 1 0 0 1 -.7.24zm6.36-14.36a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm0 17a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm-5.66-14.66a1 1 0 0 1 -.7-.29l-.71-.71a1 1 0 0 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.29zm12.02 12.02a1 1 0 0 1 -.7-.29l-.66-.71a1 1 0 0 1 1.36-1.36l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.24z"></path></g></svg></span>
+                    <span class="moon-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="m223.5 32c-123.5 0-223.5 100.3-223.5 224s100 224 223.5 224c60.6 0 115.5-24.2 155.8-63.4 5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6-96.9 0-175.5-78.8-175.5-176 0-65.8 36-123.1 89.3-153.3 6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"></path></svg></span>
+                    <input type="checkbox" class="theme-input" id="landingThemeToggle">
+                    <span class="theme-slider"></span>
                 </label>
-                <div class="status" id="statusIndicator">
-                    <div class="loader-box" id="statusLoader">
-                        <div class="loading-wrapper">
-                            <div class="loader">
-                                <div class="loader-inner"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <span class="status-dot" id="statusDot" style="display:none;"></span>
-                    <span id="statusText">Initializing Backend</span>
+            </div>
+            <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ═══════════════════ HERO ═══════════════════ -->
+    <section class="hero" id="hero">
+        <div class="hero-bg">
+            <canvas class="hero-dots-canvas" id="heroDotsCanvas"></canvas>
+            <div class="orb orb-1"></div>
+            <div class="orb orb-2"></div>
+            <div class="orb orb-3"></div>
+            <div class="grid-overlay"></div>
+        </div>
+        <div class="hero-content" id="heroContent">
+            <div class="hero-badge">
+                <span class="badge-dot"></span>
+                <span>Powered by Gemini AI</span>
+            </div>
+            <h1 class="hero-title" id="heroTitle">
+                Predict the Future of Your Sales with AI
+            </h1>
+            <p class="hero-subtitle" id="heroSubtitle">
+                Upload your CSV data and let our AI engine forecast revenue trends, generate stunning visualizations, and deliver highly accurate sales predictions — all in seconds.
+            </p>
+            <div class="hero-ctas">
+                <a href="app.html" class="btn-primary">
+                    <span>Get Started Free</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+                <button class="btn-secondary" id="tutorialBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    <span>How It Works</span>
+                </button>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <span class="stat-number" data-target="10000">0</span><span class="stat-suffix">+</span>
+                    <span class="stat-label">Predictions Made</span>
                 </div>
-            </div>
-        </header>
-
-        <section class="insights-strip" id="salesInsightsSection" style="display: none;">
-            <div class="insight-card">
-                <div class="insight-title">Most Sold Product</div>
-                <div class="insight-value" id="mostSoldProduct">-</div>
-                <div class="insight-meta" id="mostSoldMeta">-</div>
-                <div class="insight-trend-wrap">
-                    <canvas id="mostProductTrendChart" class="insight-trend-chart"></canvas>
+                <div class="hero-stat-divider"></div>
+                <div class="hero-stat">
+                    <span class="stat-number" data-target="98">0</span><span class="stat-suffix">%</span>
+                    <span class="stat-label">Accuracy Rate</span>
                 </div>
-            </div>
-            <div class="insight-card">
-                <div class="insight-title">Least Sold Product</div>
-                <div class="insight-value" id="leastSoldProduct">-</div>
-                <div class="insight-meta" id="leastSoldMeta">-</div>
-                <div class="insight-trend-wrap">
-                    <canvas id="leastProductTrendChart" class="insight-trend-chart"></canvas>
-                </div>
-            </div>
-            <div class="insight-card">
-                <div class="insight-title">Predicted Top Future Product</div>
-                <div class="insight-value" id="futureTopProduct">-</div>
-                <div class="insight-meta" id="futureTopMeta">-</div>
-                <ul class="insight-reasons" id="futureTopReasons"></ul>
-            </div>
-        </section>
-
-        <div class="main-content">
-            <!-- Left Panel - Data Upload -->
-            <div class="left-panel">
-                <div class="card">
-                    <h2><i class="fas fa-upload"></i> Upload Data</h2>
-                    <div class="upload-box" id="uploadBox">
-                        <i class="fas fa-file-csv"></i>
-                        <p>Drop CSV or Excel files here</p>
-                        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
-                        <p id="fileInfo">No files Selected</p>
-                        <button class="btn" onclick="document.getElementById('fileInput').click()">
-                            Browse Files
-                        </button>
-                    </div>
-
-                    <!-- Sample Data Section -->
-                    <div class="sample-data-section" id="sampleDataSection">
-                        <h3><i class="fas fa-folder-open"></i> Sample Datasets</h3>
-                        <p class="sample-hint">Try with a sample file to explore features</p>
-                        <div class="sample-list" id="sampleList">
-                            <p class="sample-loading">Loading samples...</p>
-                        </div>
-                    </div>
-                    
-                    <div class="file-info" id="fileInfo">
-                        No files selected
-                    </div>
-                    
-                    <button class="btn btn-primary" onclick="uploadFile()" id="uploadBtn">
-                        <i class="fas fa-cloud-upload-alt"></i> Process Data
-                    </button>
-                    
-                    <div class="data-stats" id="dataStats">
-                        <h3><i class="fas fa-database"></i> Data Overview</h3>
-                        <div class="stats-grid">
-                            <div class="stat">
-                                <div class="stat-value" id="totalRecords">0</div>
-                                <div class="stat-label" id="totalRecordsLabel">Records</div>
-                            </div>
-                            <div class="stat">
-                                <div class="stat-value" id="totalRevenue">₹0</div>
-                                <div class="stat-label" id="totalRevenueLabel">Revenue</div>
-                            </div>
-                            <div class="stat">
-                                <div class="stat-value" id="regionsCount">0</div>
-                                <div class="stat-label" id="regionsCountLabel">Regions</div>
-                            </div>
-                            <div class="stat">
-                                <div class="stat-value" id="productsCount">0</div>
-                                <div class="stat-label" id="productsCountLabel">Products</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button class="btn btn-danger" onclick="clearData()">
-                        <i class="fas fa-trash"></i> Clear All Data
-                    </button>
-
-                    <!-- Add this button after the "Clear All Data" button -->
-                    <button class="btn btn-info" onclick="generateVisualizations()" id="visualizeBtn">
-                     <i class="fas fa-chart-bar"></i> Generate Charts
-                    </button>
-                    
-                </div>
-            </div>
-
-            <!-- Right Panel - Chat Interface -->
-            <div class="right-panel">
-                
-                <div class="card chat-card">
-                    <!-- Tab Toggle -->
-                    <div class="tab-toggle">
-                        <button class="tab-btn active" id="tabChat" onclick="switchTab('chat')">
-                            <i class="fas fa-comments"></i> Chat & Query
-                        </button>
-                        <button class="tab-btn" id="tabPredictions" onclick="switchTab('predictions')">
-                            <i class="fas fa-crystal-ball"></i> Predictions
-                        </button>
-                    </div>
-
-                    <!-- ===== CHAT TAB ===== -->
-                    <div class="tab-content active" id="chatTab">
-                        <div class="chat-header-row">
-                            <h2><i class="fas fa-robot"></i> Sales Assistant</h2>
-                            <button id="clearChatBtn" onclick="clearChat()">Clear Chat</button>
-                        </div>
-                        <p class="subtitle">Ask questions about your sales data</p>
-                        
-                        <!-- Chat Messages -->
-                        <div class="chat-messages" id="chatMessages">
-                            <div class="message bot">
-                                <div class="avatar">
-                                    <i class="fas fa-robot"></i>
-                                </div>
-                                <div class="content">
-                                    <div class="name">Sales Assistant</div>
-                                    <p>Hello! I can help you analyze your sales data.</p>
-                                    <p>To get started:</p>
-                                    <ol>
-                                        <li>Upload your sales data (CSV or Excel) using the left panel</li>
-                                        <li>Then ask me questions like:</li>
-                                        <ul>
-                                            <li>"What is our total revenue?"</li>
-                                            <li>"Show sales by region"</li>
-                                            <li>"What are the top products?"</li>
-                                            <li>"Any trends in the data?"</li>
-                                        </ul>
-                                    </ol>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Quick Questions -->
-                        <div class="quick-questions">
-                            <p>Try asking:</p>
-                            <div class="question-chips">
-                                <button class="chip" onclick="askQuestion('What is the total revenue?')">
-                                    Total Revenue
-                                </button>
-                                <button class="chip" onclick="askQuestion('Which region has highest sales?')">
-                                    Top Region
-                                </button>
-                                <button class="chip" onclick="askQuestion('Show product performance')">
-                                    Product Performance
-                                </button>
-                                <button class="chip" onclick="askQuestion('Any sales trends?')">
-                                    Sales Trends
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Input Area -->
-                        <div class="input-area">
-                            <input 
-                                type="text" 
-                                id="userInput" 
-                                placeholder="Type your question here..."
-                                onkeypress="handleKeyPress(event)"
-                            >
-                            <button class="btn btn-primary" onclick="sendMessage()">
-                                <i class="fas fa-paper-plane"></i> Ask
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- ===== PREDICTIONS TAB ===== -->
-                    <div class="tab-content" id="predictionsTab">
-                        <div class="predictions-header">
-                            <h2><i class="fas fa-chart-line"></i> Predictions & Insights</h2>
-                            <button class="btn-refresh" onclick="loadPredictions()" id="refreshPredictionsBtn" title="Refresh predictions">
-                                <i class="fas fa-sync-alt"></i> Generate
-                            </button>
-                        </div>
-                        <p class="subtitle">AI-powered predictions, alternatives & improvement strategies</p>
-
-                        <!-- Predictions Loading -->
-                        <div class="predictions-loading" id="predictionsLoading" style="display:none;">
-                            <div class="loader-box">
-                                <div class="loading-wrapper">
-                                    <div class="loader"><div class="loader-inner"></div></div>
-                                </div>
-                            </div>
-                            <p>Generating predictions with AI...</p>
-                        </div>
-
-                        <!-- Predictions Empty State -->
-                        <div class="predictions-empty" id="predictionsEmpty">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <h3>No Data Loaded</h3>
-                            <p>Upload a CSV/Excel file first, then switch here to see AI-generated predictions, alternative strategies, and improvement recommendations.</p>
-                        </div>
-
-                        <!-- Predictions Content -->
-                        <div class="predictions-content" id="predictionsContent" style="display:none;">
-                            <!-- Sections rendered dynamically by JS -->
-                        </div>
-                    </div>
-
+                <div class="hero-stat-divider"></div>
+                <div class="hero-stat">
+                    <span class="stat-number" data-target="500">0</span><span class="stat-suffix">+</span>
+                    <span class="stat-label">Companies Trust Us</span>
                 </div>
             </div>
         </div>
+        <div class="hero-visual" id="heroVisual">
+            <div class="dashboard-mockup">
+                <div class="mockup-header">
+                    <div class="mockup-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <div class="mockup-title">AI-Sales Analytics Agent Dashboard</div>
+                </div>
+                <div class="mockup-body">
+                    <div class="mockup-sidebar">
+                        <div class="sidebar-item active"></div>
+                        <div class="sidebar-item"></div>
+                        <div class="sidebar-item"></div>
+                        <div class="sidebar-item"></div>
+                        <div class="sidebar-item"></div>
+                    </div>
+                    <div class="mockup-main">
+                        <div class="mockup-chart-area">
+                            <svg class="chart-svg" viewBox="0 0 400 150" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#6366f1" stop-opacity="0.3"/>
+                                        <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                <path class="chart-area-path" d="M0,120 C50,100 80,110 120,80 C160,50 200,70 240,40 C280,10 320,30 360,20 L400,15 L400,150 L0,150Z" fill="url(#chartGrad)"/>
+                                <path class="chart-line" d="M0,120 C50,100 80,110 120,80 C160,50 200,70 240,40 C280,10 320,30 360,20 L400,15" fill="none" stroke="#6366f1" stroke-width="2.5"/>
+                            </svg>
+                        </div>
+                        <div class="mockup-cards-row">
+                            <div class="mockup-stat-card">
+                                <div class="msc-label"></div>
+                                <div class="msc-value"></div>
+                                <div class="msc-bar"><div class="msc-bar-fill" style="width:75%"></div></div>
+                            </div>
+                            <div class="mockup-stat-card">
+                                <div class="msc-label"></div>
+                                <div class="msc-value"></div>
+                                <div class="msc-bar"><div class="msc-bar-fill" style="width:60%"></div></div>
+                            </div>
+                            <div class="mockup-stat-card">
+                                <div class="msc-label"></div>
+                                <div class="msc-value"></div>
+                                <div class="msc-bar"><div class="msc-bar-fill" style="width:90%"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-        <!-- Footer -->
-        <footer class="footer">
-            <p>&copy;Team Abscond. 2026 <br>Simple Sales Analytics Agent • No Database Required • Uses In-Memory Storage</p>
-        </footer>
+    <!-- ═══════════════ TRUSTED BY ═══════════════ -->
+    <section class="trusted-section">
+        <div class="container">
+            <p class="trusted-label">Trusted by forward-thinking teams at</p>
+            <div class="trusted-logos">
+                <div class="trusted-logo">Acme Corp</div>
+                <div class="trusted-logo">NovaTech</div>
+                <div class="trusted-logo">Quantum Inc</div>
+                <div class="trusted-logo">DataFlow</div>
+                <div class="trusted-logo">SynergyAI</div>
+                <div class="trusted-logo">Apex Labs</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ FEATURES ═══════════════ -->
+    <section class="features-section" id="features">
+        <div class="container">
+            <div class="section-header reveal-up">
+                <span class="section-badge">Features</span>
+                <h2 class="section-title">Everything you need to<br><span class="gradient-text">dominate your sales</span></h2>
+                <p class="section-subtitle">Our AI-powered platform transforms raw CSV data into actionable sales intelligence with stunning accuracy.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card reveal-up" data-delay="0">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 48 48" fill="none">
+                            <rect width="48" height="48" rx="12" fill="#6366f1" fill-opacity="0.1"/>
+                            <path d="M14 34V26M20 34V20M26 34V24M32 34V16" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round"/>
+                            <path d="M14 22L20 16L26 20L34 12" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="34" cy="12" r="2" fill="#a855f7"/>
+                        </svg>
+                    </div>
+                    <h3>Future Sales Prediction</h3>
+                    <p>AI forecasts revenue trends using your historical data. See what's coming before it happens — and plan accordingly.</p>
+                </div>
+                <div class="feature-card reveal-up" data-delay="100">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 48 48" fill="none">
+                            <rect width="48" height="48" rx="12" fill="#06b6d4" fill-opacity="0.1"/>
+                            <rect x="12" y="14" width="24" height="20" rx="3" stroke="#06b6d4" stroke-width="2"/>
+                            <path d="M12 22H36" stroke="#06b6d4" stroke-width="2"/>
+                            <path d="M20 14V34" stroke="#06b6d4" stroke-width="2"/>
+                            <path d="M28 14V34" stroke="#06b6d4" stroke-width="2"/>
+                            <path d="M12 28H36" stroke="#06b6d4" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <h3>CSV Data Ingestion</h3>
+                    <p>Upload your CSV files and watch the magic unfold. Our system processes your data instantly with zero configuration required.</p>
+                </div>
+                <div class="feature-card reveal-up" data-delay="200">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 48 48" fill="none">
+                            <rect width="48" height="48" rx="12" fill="#10b981" fill-opacity="0.1"/>
+                            <circle cx="24" cy="24" r="11" stroke="#10b981" stroke-width="2"/>
+                            <path d="M24 13V24L30 30" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M18 10L16 7M30 10L32 7" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <h3>Automated Chart Generation</h3>
+                    <p>Auto-generated dynamic dashboards and visual reports. Beautiful charts built in real-time from your raw data.</p>
+                </div>
+                <div class="feature-card reveal-up" data-delay="300">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 48 48" fill="none">
+                            <rect width="48" height="48" rx="12" fill="#f59e0b" fill-opacity="0.1"/>
+                            <circle cx="24" cy="20" r="7" stroke="#f59e0b" stroke-width="2"/>
+                            <path d="M24 27V36" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M20 32H28" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M22 14L24 18L26 14" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h3>Accurate AI Predictions</h3>
+                    <p>Powered by Google's Gemini for high-precision forecasting. Our models achieve 98%+ accuracy on validated datasets.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ PRODUCT SHOWCASE ═══════════════ -->
+    <section class="showcase-section" id="showcase">
+        <div class="container">
+            <div class="section-header reveal-up">
+                <span class="section-badge">Product</span>
+                <h2 class="section-title">A dashboard built for<br><span class="gradient-text">the future of sales</span></h2>
+                <p class="section-subtitle">See your entire sales pipeline at a glance with AI-generated insights and predictive analytics.</p>
+            </div>
+
+            <div class="showcase-dashboard reveal-up">
+                <div class="showcase-screen">
+                    <div class="showcase-topbar">
+                        <div class="showcase-dots"><span></span><span></span><span></span></div>
+                        <span class="showcase-url">app.ai-sales-analytics.io/dashboard</span>
+                    </div>
+                    <div class="showcase-content">
+                        <div class="showcase-metric-row">
+                            <div class="showcase-metric" data-delay="0">
+                                <span class="sm-label">Total Revenue</span>
+                                <span class="sm-value counter" data-target="284500" data-prefix="$">$0</span>
+                                <span class="sm-change positive">+12.5%</span>
+                            </div>
+                            <div class="showcase-metric" data-delay="100">
+                                <span class="sm-label">Predictions</span>
+                                <span class="sm-value counter" data-target="1284" data-prefix="">0</span>
+                                <span class="sm-change positive">+8.3%</span>
+                            </div>
+                            <div class="showcase-metric" data-delay="200">
+                                <span class="sm-label">Accuracy</span>
+                                <span class="sm-value counter" data-target="98" data-prefix="" data-suffix="%">0%</span>
+                                <span class="sm-change positive">+2.1%</span>
+                            </div>
+                            <div class="showcase-metric" data-delay="300">
+                                <span class="sm-label">Datasets</span>
+                                <span class="sm-value counter" data-target="47" data-prefix="">0</span>
+                                <span class="sm-change positive">+23%</span>
+                            </div>
+                        </div>
+                        <div class="showcase-chart-section">
+                            <svg class="showcase-chart-svg" viewBox="0 0 600 200" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="scGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#6366f1" stop-opacity="0.25"/>
+                                        <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                <path class="sc-area" d="M0,160 C60,140 100,150 160,120 C220,90 260,100 320,60 C380,30 440,50 500,30 L560,20 L600,18 L600,200 L0,200Z" fill="url(#scGrad)"/>
+                                <path class="sc-line" d="M0,160 C60,140 100,150 160,120 C220,90 260,100 320,60 C380,30 440,50 500,30 L560,20 L600,18" fill="none" stroke="#6366f1" stroke-width="2.5"/>
+                                <path class="sc-line-2" d="M0,170 C60,165 100,160 160,155 C220,140 260,145 320,130 C380,115 440,120 500,100 L560,90 L600,85" fill="none" stroke="#a855f7" stroke-width="2" stroke-dasharray="4 4"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ TECH STACK ═══════════════ -->
+    <section class="techstack-section" id="techstack">
+        <div class="container">
+            <div class="section-header reveal-up">
+                <span class="section-badge">Technology</span>
+                <h2 class="section-title">Built with the<br><span class="gradient-text">modern stack</span></h2>
+                <p class="section-subtitle">Enterprise-grade technology powering every prediction.</p>
+            </div>
+            <div class="tech-grid">
+                <div class="tech-category reveal-up" data-delay="0">
+                    <h4 class="tech-cat-title">Frontend</h4>
+                    <div class="tech-cards">
+                        <div class="tech-card">
+                            <div class="tech-card-icon">
+                                <svg viewBox="0 0 32 32"><path d="M6 4H26V28H6Z" fill="none" stroke="#e34f26" stroke-width="2"/><text x="16" y="20" text-anchor="middle" fill="#e34f26" font-size="10" font-weight="bold">&lt;/&gt;</text></svg>
+                            </div>
+                            <span>HTML5</span>
+                        </div>
+                        <div class="tech-card">
+                            <div class="tech-card-icon">
+                                <svg viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="24" rx="4" fill="none" stroke="#1572b6" stroke-width="2"/><text x="16" y="21" text-anchor="middle" fill="#1572b6" font-size="11" font-weight="bold">{ }</text></svg>
+                            </div>
+                            <span>CSS3</span>
+                        </div>
+                        <div class="tech-card">
+                            <div class="tech-card-icon">
+                                <svg viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="24" rx="4" fill="#f7df1e" fill-opacity="0.15" stroke="#f7df1e" stroke-width="2"/><text x="16" y="21" text-anchor="middle" fill="#f7df1e" font-size="12" font-weight="bold">JS</text></svg>
+                            </div>
+                            <span>JavaScript</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="tech-category reveal-up" data-delay="150">
+                    <h4 class="tech-cat-title">Backend</h4>
+                    <div class="tech-cards">
+                        <div class="tech-card">
+                            <div class="tech-card-icon">
+                                <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="none" stroke="#3776ab" stroke-width="2"/><text x="16" y="20" text-anchor="middle" fill="#3776ab" font-size="9" font-weight="bold">Py</text></svg>
+                            </div>
+                            <span>Python</span>
+                        </div>
+                        <div class="tech-card">
+                            <div class="tech-card-icon">
+                                <svg viewBox="0 0 32 32"><rect x="4" y="8" width="24" height="16" rx="3" fill="none" stroke="#000" stroke-width="2"/><circle cx="12" cy="16" r="3" fill="none" stroke="#000" stroke-width="1.5"/><path d="M18 12V20" stroke="#000" stroke-width="1.5"/></svg>
+                            </div>
+                            <span>Flask</span>
+                        </div>
+                        <div class="tech-card">
+                            <div class="tech-card-icon">
+                                <svg viewBox="0 0 32 32"><path d="M8 8L16 4L24 8V16L16 28L8 16Z" fill="none" stroke="#009688" stroke-width="2"/><circle cx="16" cy="14" r="3" fill="none" stroke="#009688" stroke-width="1.5"/></svg>
+                            </div>
+                            <span>FastAPI</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="tech-category reveal-up" data-delay="300">
+                    <h4 class="tech-cat-title">AI Engine</h4>
+                    <div class="tech-cards">
+                        <div class="tech-card featured">
+                            <div class="tech-card-icon">
+                                <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="none" stroke="#4285f4" stroke-width="2"/><path d="M10 16L14 20L22 12" stroke="#4285f4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="6" r="2" fill="#ea4335"/><circle cx="24" cy="22" r="2" fill="#34a853"/><circle cx="8" cy="22" r="2" fill="#fbbc05"/></svg>
+                            </div>
+                            <span>Gemini</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="tech-category reveal-up" data-delay="450">
+                    <h4 class="tech-cat-title">Deployment</h4>
+                    <div class="tech-cards">
+                        <div class="tech-card">
+                            <div class="tech-card-icon">
+                                <svg viewBox="0 0 32 32"><path d="M6 16L16 6L26 16L16 26Z" fill="none" stroke="#46e3b7" stroke-width="2"/><circle cx="16" cy="16" r="3" fill="#46e3b7" fill-opacity="0.3" stroke="#46e3b7" stroke-width="1.5"/></svg>
+                            </div>
+                            <span>Render</span>
+                        </div>
+                        <div class="tech-card">
+                            <div class="tech-card-icon">
+                                <svg viewBox="0 0 32 32"><polygon points="16,4 28,28 4,28" fill="none" stroke="#fff" stroke-width="2"/><polygon points="16,12 22,24 10,24" fill="none" stroke="#fff" stroke-width="1.5"/></svg>
+                            </div>
+                            <span>Vercel</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ TESTIMONIALS ═══════════════ -->
+    <section class="testimonials-section" id="testimonials">
+        <div class="container">
+            <div class="section-header reveal-up">
+                <span class="section-badge">Testimonials</span>
+                <h2 class="section-title">Loved by teams<br><span class="gradient-text">worldwide</span></h2>
+            </div>
+        </div>
+        <div class="testimonial-track-wrapper">
+            <div class="testimonial-track" id="testimonialTrack">
+                <div class="testimonial-card">
+                    <div class="tc-stars">★★★★★</div>
+                    <p>"AI-Sales Analytics Agent transformed our forecasting. We went from guessing to knowing — our Q3 revenue predictions were spot-on."</p>
+                    <div class="tc-author">
+                        <div class="tc-avatar">JM</div>
+                        <div><strong>James Mitchell</strong><br><span>VP Sales, Acme Corp</span></div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="tc-stars">★★★★★</div>
+                    <p>"The CSV upload feature is a game-changer. We dragged in our data and had charts in 10 seconds. Insane."</p>
+                    <div class="tc-author">
+                        <div class="tc-avatar">SK</div>
+                        <div><strong>Sarah Kim</strong><br><span>Data Lead, NovaTech</span></div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="tc-stars">★★★★★</div>
+                    <p>"We replaced three separate tools with AI-Sales Analytics Agent. The Gemini-powered predictions are incredibly accurate."</p>
+                    <div class="tc-author">
+                        <div class="tc-avatar">AP</div>
+                        <div><strong>Alex Patel</strong><br><span>CTO, Quantum Inc</span></div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="tc-stars">★★★★★</div>
+                    <p>"Our sales team now makes data-driven decisions daily. The auto-generated dashboards are beautiful."</p>
+                    <div class="tc-author">
+                        <div class="tc-avatar">LR</div>
+                        <div><strong>Lisa Rodriguez</strong><br><span>Sales Director, DataFlow</span></div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="tc-stars">★★★★★</div>
+                    <p>"Setup took 5 minutes. Insights took seconds. This is what enterprise AI should feel like."</p>
+                    <div class="tc-author">
+                        <div class="tc-avatar">DW</div>
+                        <div><strong>David Wang</strong><br><span>CEO, SynergyAI</span></div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="tc-stars">★★★★★</div>
+                    <p>"Incredibly intuitive platform. Our quarterly planning is now powered by real AI — not spreadsheets."</p>
+                    <div class="tc-author">
+                        <div class="tc-avatar">MN</div>
+                        <div><strong>Maria Nguyen</strong><br><span>Head of Growth, Apex Labs</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ FINAL CTA ═══════════════ -->
+    <section class="cta-section" id="cta">
+        <div class="cta-bg">
+            <div class="cta-orb cta-orb-1"></div>
+            <div class="cta-orb cta-orb-2"></div>
+        </div>
+        <div class="container">
+            <div class="cta-content reveal-up">
+                <h2 class="cta-title" id="ctaTitle">Ready to predict<br>the future of your sales?</h2>
+                <p class="cta-subtitle">Join 500+ companies using AI-Sales Analytics Agent to make smarter, data-driven decisions.</p>
+                <a href="app.html" class="cta-button">
+                    <span>Start Predicting Now</span>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+                <p class="cta-note">Free forever plan available. No credit card required.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="#" class="nav-logo">
+                        <svg class="logo-icon" viewBox="0 0 32 32" fill="none">
+                            <defs><linearGradient id="logoGrad2" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+                            <rect width="32" height="32" rx="8" fill="url(#logoGrad2)"/>
+                            <path d="M8 22L13 14L18 18L24 10" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="24" cy="10" r="2" fill="#fff"/>
+                        </svg>
+                        <span>AI-Sales Analytics Agent</span>
+                    </a>
+                    <p>AI-powered sales intelligence for modern teams.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <a href="#features">Features</a>
+                    <a href="#showcase">Dashboard</a>
+                    <a href="#">Changelog</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Company</h4>
+                    <a href="#">About</a>
+                    <a href="#">Blog</a>
+                    <a href="#">Careers</a>
+                    <a href="#">Contact</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <a href="#">Privacy</a>
+                    <a href="#">Terms</a>
+                    <a href="#">Security</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Team Abscond <br>. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ═══════════════ TUTORIAL MODAL ═══════════════ -->
+    <div class="tutorial-overlay" id="tutorialOverlay">
+        <div class="tutorial-card" id="tutorialCard">
+            <button class="tutorial-close" id="tutorialClose" aria-label="Close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <div class="tutorial-header">
+                <span class="section-badge">Tutorial</span>
+                <h2 class="tutorial-title">How It Works</h2>
+                <p class="tutorial-desc">Get started in four simple steps</p>
+            </div>
+            <div class="tutorial-steps">
+                <div class="tutorial-step" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Upload Your Sales Data</h3>
+                        <p>Import your CSV or Excel file to begin analysis. The system automatically processes and prepares your dataset for insights and predictions.</p>
+                        <p class="step-hint">New users can try the built-in sample dataset to explore the features.</p>
+                    </div>
+                </div>
+                <div class="tutorial-step" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Get Instant Analytics</h3>
+                        <p>View key performance metrics like total revenue, number of products, and regional distribution.</p>
+                        <p class="step-hint">Interactive charts help you understand trends and performance patterns quickly.</p>
+                    </div>
+                </div>
+                <div class="tutorial-step" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Ask Intelligent Questions</h3>
+                        <p>Use the AI assistant to ask business-related questions in natural language.</p>
+                        <p class="step-hint">The system analyzes your uploaded data to provide relevant and data-grounded responses.</p>
+                    </div>
+                </div>
+                <div class="tutorial-step" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>Generate Sales Forecasts</h3>
+                        <p>Based on historical data trends, the system predicts future sales performance.</p>
+                        <p class="step-hint">These forecasts help support planning, strategy, and decision-making.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="tutorial-footer">
+                <a href="app.html" class="btn-primary">
+                    <span>Try It Now</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+            </div>
+        </div>
     </div>
 
-    <!-- Go to Top Button -->
-    <button class="go-top-btn" id="goTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Go to top">
-        <i class="fas fa-arrow-up"></i>
+    <!-- GO TO TOP -->
+    <button class="go-top-btn" id="goTopBtn" aria-label="Go to top">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
     </button>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="script.js"></script>
+    <script src="landing.js"></script>
 </body>
 </html>

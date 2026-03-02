@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Sales Analytics Agent</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-chart-line"></i>
+                <h1>Simple Sales Analytics</h1>
+            </div>
+            <div class="header-right">
+                <label class="switch" title="Toggle theme">
+                    <span class="sun"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="#ffd43b"><circle r="5" cy="12" cx="12"></circle><path d="m21 13h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm-17 0h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm13.66-5.66a1 1 0 0 1 -.66-.29 1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1 -.75.29zm-12.02 12.02a1 1 0 0 1 -.71-.29 1 1 0 0 1 0-1.41l.71-.66a1 1 0 0 1 1.41 1.41l-.71.71a1 1 0 0 1 -.7.24zm6.36-14.36a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm0 17a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm-5.66-14.66a1 1 0 0 1 -.7-.29l-.71-.71a1 1 0 0 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.29zm12.02 12.02a1 1 0 0 1 -.7-.29l-.66-.71a1 1 0 0 1 1.36-1.36l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.24z"></path></g></svg></span>
+                    <span class="moon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="m223.5 32c-123.5 0-223.5 100.3-223.5 224s100 224 223.5 224c60.6 0 115.5-24.2 155.8-63.4 5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6-96.9 0-175.5-78.8-175.5-176 0-65.8 36-123.1 89.3-153.3 6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"></path></svg></span>
+                    <input type="checkbox" class="input" id="themeToggle">
+                    <span class="slider"></span>
+                </label>
+                <div class="status" id="statusIndicator">
+                    <div class="loader-box" id="statusLoader">
+                        <div class="loading-wrapper">
+                            <div class="loader">
+                                <div class="loader-inner"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="status-dot" id="statusDot" style="display:none;"></span>
+                    <span id="statusText">Initializing Backend</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="insights-strip" id="salesInsightsSection" style="display: none;">
+            <div class="insight-card">
+                <div class="insight-title">Most Sold Product</div>
+                <div class="insight-value" id="mostSoldProduct">-</div>
+                <div class="insight-meta" id="mostSoldMeta">-</div>
+                <div class="insight-trend-wrap">
+                    <canvas id="mostProductTrendChart" class="insight-trend-chart"></canvas>
+                </div>
+            </div>
+            <div class="insight-card">
+                <div class="insight-title">Least Sold Product</div>
+                <div class="insight-value" id="leastSoldProduct">-</div>
+                <div class="insight-meta" id="leastSoldMeta">-</div>
+                <div class="insight-trend-wrap">
+                    <canvas id="leastProductTrendChart" class="insight-trend-chart"></canvas>
+                </div>
+            </div>
+            <div class="insight-card">
+                <div class="insight-title">Predicted Top Future Product</div>
+                <div class="insight-value" id="futureTopProduct">-</div>
+                <div class="insight-meta" id="futureTopMeta">-</div>
+                <ul class="insight-reasons" id="futureTopReasons"></ul>
+            </div>
+        </section>
+
+        <div class="main-content">
+            <!-- Left Panel - Data Upload -->
+            <div class="left-panel">
+                <div class="card">
+                    <h2><i class="fas fa-upload"></i> Upload Data</h2>
+                    <div class="upload-box" id="uploadBox">
+                        <i class="fas fa-file-csv"></i>
+                        <p>Drop CSV or Excel files here</p>
+                        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+                        <p id="fileInfo">No files Selected</p>
+                        <button class="btn" onclick="document.getElementById('fileInput').click()">
+                            Browse Files
+                        </button>
+                    </div>
+
+                    <!-- Sample Data Section -->
+                    <div class="sample-data-section" id="sampleDataSection">
+                        <h3><i class="fas fa-folder-open"></i> Sample Datasets</h3>
+                        <p class="sample-hint">Try with a sample file to explore features</p>
+                        <div class="sample-list" id="sampleList">
+                            <p class="sample-loading">Loading samples...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="file-info" id="fileInfo">
+                        No files selected
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="uploadFile()" id="uploadBtn">
+                        <i class="fas fa-cloud-upload-alt"></i> Process Data
+                    </button>
+                    
+                    <div class="data-stats" id="dataStats">
+                        <h3><i class="fas fa-database"></i> Data Overview</h3>
+                        <div class="stats-grid">
+                            <div class="stat">
+                                <div class="stat-value" id="totalRecords">0</div>
+                                <div class="stat-label" id="totalRecordsLabel">Records</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" id="totalRevenue">₹0</div>
+                                <div class="stat-label" id="totalRevenueLabel">Revenue</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" id="regionsCount">0</div>
+                                <div class="stat-label" id="regionsCountLabel">Regions</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" id="productsCount">0</div>
+                                <div class="stat-label" id="productsCountLabel">Products</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-danger" onclick="clearData()">
+                        <i class="fas fa-trash"></i> Clear All Data
+                    </button>
+
+                    <!-- Add this button after the "Clear All Data" button -->
+                    <button class="btn btn-info" onclick="generateVisualizations()" id="visualizeBtn">
+                     <i class="fas fa-chart-bar"></i> Generate Charts
+                    </button>
+                    
+                </div>
+            </div>
+
+            <!-- Right Panel - Chat Interface -->
+            <div class="right-panel">
+                
+                <div class="card chat-card">
+                    <!-- Tab Toggle -->
+                    <div class="tab-toggle">
+                        <button class="tab-btn active" id="tabChat" onclick="switchTab('chat')">
+                            <i class="fas fa-comments"></i> Chat & Query
+                        </button>
+                        <button class="tab-btn" id="tabPredictions" onclick="switchTab('predictions')">
+                            <i class="fas fa-crystal-ball"></i> Predictions
+                        </button>
+                    </div>
+
+                    <!-- ===== CHAT TAB ===== -->
+                    <div class="tab-content active" id="chatTab">
+                        <div class="chat-header-row">
+                            <h2><i class="fas fa-robot"></i> Sales Assistant</h2>
+                            <button id="clearChatBtn" onclick="clearChat()">Clear Chat</button>
+                        </div>
+                        <p class="subtitle">Ask questions about your sales data</p>
+                        
+                        <!-- Chat Messages -->
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="message bot">
+                                <div class="avatar">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <div class="content">
+                                    <div class="name">Sales Assistant</div>
+                                    <p>Hello! I can help you analyze your sales data.</p>
+                                    <p>To get started:</p>
+                                    <ol>
+                                        <li>Upload your sales data (CSV or Excel) using the left panel</li>
+                                        <li>Then ask me questions like:</li>
+                                        <ul>
+                                            <li>"What is our total revenue?"</li>
+                                            <li>"Show sales by region"</li>
+                                            <li>"What are the top products?"</li>
+                                            <li>"Any trends in the data?"</li>
+                                        </ul>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Questions -->
+                        <div class="quick-questions">
+                            <p>Try asking:</p>
+                            <div class="question-chips">
+                                <button class="chip" onclick="askQuestion('What is the total revenue?')">
+                                    Total Revenue
+                                </button>
+                                <button class="chip" onclick="askQuestion('Which region has highest sales?')">
+                                    Top Region
+                                </button>
+                                <button class="chip" onclick="askQuestion('Show product performance')">
+                                    Product Performance
+                                </button>
+                                <button class="chip" onclick="askQuestion('Any sales trends?')">
+                                    Sales Trends
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Input Area -->
+                        <div class="input-area">
+                            <input 
+                                type="text" 
+                                id="userInput" 
+                                placeholder="Type your question here..."
+                                onkeypress="handleKeyPress(event)"
+                            >
+                            <button class="btn btn-primary" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane"></i> Ask
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ===== PREDICTIONS TAB ===== -->
+                    <div class="tab-content" id="predictionsTab">
+                        <div class="predictions-header">
+                            <h2><i class="fas fa-chart-line"></i> Predictions & Insights</h2>
+                            <button class="btn-refresh" onclick="loadPredictions()" id="refreshPredictionsBtn" title="Refresh predictions">
+                                <i class="fas fa-sync-alt"></i> Generate
+                            </button>
+                        </div>
+                        <p class="subtitle">AI-powered predictions, alternatives & improvement strategies</p>
+
+                        <!-- Predictions Loading -->
+                        <div class="predictions-loading" id="predictionsLoading" style="display:none;">
+                            <div class="loader-box">
+                                <div class="loading-wrapper">
+                                    <div class="loader"><div class="loader-inner"></div></div>
+                                </div>
+                            </div>
+                            <p>Generating predictions with AI...</p>
+                        </div>
+
+                        <!-- Predictions Empty State -->
+                        <div class="predictions-empty" id="predictionsEmpty">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h3>No Data Loaded</h3>
+                            <p>Upload a CSV/Excel file first, then switch here to see AI-generated predictions, alternative strategies, and improvement recommendations.</p>
+                        </div>
+
+                        <!-- Predictions Content -->
+                        <div class="predictions-content" id="predictionsContent" style="display:none;">
+                            <!-- Sections rendered dynamically by JS -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy;Team Abscond. 2026 <br>Simple Sales Analytics Agent • No Database Required • Uses In-Memory Storage</p>
+        </footer>
+    </div>
+
+    <!-- Go to Top Button -->
+    <button class="go-top-btn" id="goTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Go to top">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

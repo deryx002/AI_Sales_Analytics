@@ -1047,7 +1047,7 @@ def get_sample(filename):
 
 @app.route('/api/predictions', methods=['GET'])
 def get_predictions():
-    """Memory-safe AI predictions using aggregated metrics only"""
+    """AI predictions using detailed per-product and per-region breakdowns"""
     try:
         if not sales_data:
             return jsonify({
@@ -1055,51 +1055,121 @@ def get_predictions():
                 'message': 'No data loaded. Please upload a CSV or Excel file first.'
             })
 
-        # --- Aggregate metrics ---
         summary = extract_sales_insights(sales_data)
-        product_insights = get_product_insights(sales_data)
 
-        # Limit lists (important for memory)
-        top_products = summary['products'][:5]
-        top_regions = summary['regions'][:5]
+        # ── Build detailed per-product and per-region breakdowns ──
+        product_stats = {}
+        region_stats = {}
+        category_stats = {}
 
-        # Strict allowed lists
-        allowed_products = ', '.join(top_products) if top_products else 'None'
-        allowed_regions = ', '.join(top_regions) if top_regions else 'None'
+        for record in sales_data:
+            if 'data' not in record:
+                continue
+            d = record['data']
 
-        prompt = f"""
-You are a Sales Strategy & Forecasting AI.
+            # Revenue
+            rev_val = None
+            rev_key = first_matching_key(d, 'revenue')
+            if rev_key:
+                rev_val = to_float(d.get(rev_key))
+            if rev_val is None:
+                p_key = first_matching_key(d, 'price')
+                q_key = first_matching_key(d, 'quantity')
+                if p_key and q_key:
+                    pv, qv = to_float(d.get(p_key)), to_float(d.get(q_key))
+                    if pv is not None and qv is not None:
+                        rev_val = pv * qv
 
-CRITICAL DATA RULES (MUST FOLLOW):
-1. You are ONLY allowed to reference these exact product names:
-{allowed_products}
+            qty_val = None
+            q_key = first_matching_key(d, 'quantity')
+            if q_key:
+                qty_val = to_float(d.get(q_key))
 
-2. You are ONLY allowed to reference these exact region names:
-{allowed_regions}
+            # Product breakdown
+            pr_key = first_matching_key(d, 'product')
+            if pr_key:
+                pname = str(d[pr_key]).strip()
+                if pname and pname.lower() != 'nan':
+                    if pname not in product_stats:
+                        product_stats[pname] = {'revenue': 0, 'quantity': 0, 'count': 0}
+                    product_stats[pname]['count'] += 1
+                    if rev_val is not None:
+                        product_stats[pname]['revenue'] += rev_val
+                    if qty_val is not None:
+                        product_stats[pname]['quantity'] += qty_val
 
-3. If you mention any product or region not in the lists above, your response is INVALID.
-4. Do NOT invent products, regions, or numbers.
-5. Use ONLY the aggregated metrics provided below.
+            # Region breakdown
+            r_key = first_matching_key(d, 'region')
+            if r_key:
+                rname = str(d[r_key]).strip()
+                if rname and rname.lower() != 'nan':
+                    if rname not in region_stats:
+                        region_stats[rname] = {'revenue': 0, 'quantity': 0, 'count': 0}
+                    region_stats[rname]['count'] += 1
+                    if rev_val is not None:
+                        region_stats[rname]['revenue'] += rev_val
+                    if qty_val is not None:
+                        region_stats[rname]['quantity'] += qty_val
 
-AGGREGATED SALES METRICS:
+            # Check for category/product_line column
+            for cat_alias in ['category', 'product_line', 'product line', 'segment', 'type']:
+                cat_key = None
+                for k in d:
+                    if normalize_column_key(k) == cat_alias.replace(' ', '_'):
+                        cat_key = k
+                        break
+                if cat_key:
+                    cname = str(d[cat_key]).strip()
+                    if cname and cname.lower() != 'nan':
+                        if cname not in category_stats:
+                            category_stats[cname] = {'revenue': 0, 'quantity': 0, 'count': 0}
+                        category_stats[cname]['count'] += 1
+                        if rev_val is not None:
+                            category_stats[cname]['revenue'] += rev_val
+                        if qty_val is not None:
+                            category_stats[cname]['quantity'] += qty_val
+                    break
+
+        # ── Format breakdowns for the prompt ──
+        product_text = ""
+        if product_stats:
+            product_text = "\nPER-PRODUCT BREAKDOWN:\n"
+            for p, s in sorted(product_stats.items(), key=lambda x: -x[1]['revenue']):
+                product_text += f"  • {p}: Revenue ₹{s['revenue']:,.2f}, Qty {s['quantity']:.0f}, Records {s['count']}\n"
+
+        region_text = ""
+        if region_stats:
+            region_text = "\nPER-REGION BREAKDOWN:\n"
+            for r, s in sorted(region_stats.items(), key=lambda x: -x[1]['revenue']):
+                region_text += f"  • {r}: Revenue ₹{s['revenue']:,.2f}, Qty {s['quantity']:.0f}, Records {s['count']}\n"
+
+        category_text = ""
+        if category_stats:
+            category_text = "\nPER-CATEGORY BREAKDOWN:\n"
+            for c, s in sorted(category_stats.items(), key=lambda x: -x[1]['revenue']):
+                category_text += f"  • {c}: Revenue ₹{s['revenue']:,.2f}, Qty {s['quantity']:.0f}, Records {s['count']}\n"
+
+        columns_text = ", ".join(summary['columns'])
+
+        prompt = f"""You are an expert Sales Analytics & Strategy AI.
+
+COMPLETE SALES DATA METRICS:
 - Total Records: {summary['record_count']}
 - Total Revenue: ₹{summary['total_revenue']:,.2f}
 - Average Revenue per record: ₹{summary['avg_revenue']:,.2f}
+- Available Columns: {columns_text}
+{product_text}{region_text}{category_text}
 
-PRODUCT INSIGHTS:
-{json.dumps(product_insights, indent=2)}
-
-TASK:
-Generate structured sales predictions and improvement suggestions.
-
-RESPONSE RULES:
-- Use ONLY the allowed product and region names
-- Use Indian Rupees (₹)
-- Be concise
-- 3–4 items per section
-- Output STRICT JSON ONLY
-- No markdown
-- No explanations outside JSON
+CRITICAL INSTRUCTIONS:
+1. Use the EXACT numbers from the breakdowns above for every product and region reference
+2. Do NOT say "Data Unavailable" — all relevant data is provided above
+3. For predictions, calculate growth trends from the revenue/quantity data
+4. For each product, predict future demand based on its current share of total revenue
+5. For each region, predict growth based on its current contribution
+6. Use Indian Rupees (₹) for all currency values
+7. Be specific — mention actual product names, region names, and numbers
+8. Provide 3–5 items per section
+9. Output STRICT JSON ONLY — no markdown, no code fences, no extra text
 
 JSON FORMAT:
 {{
@@ -1107,9 +1177,9 @@ JSON FORMAT:
     "title": "Sales Forecast",
     "items": [
       {{
-        "label": "Forecast title",
-        "value": "Predicted value",
-        "detail": "Explanation",
+        "label": "short title",
+        "value": "predicted value or key metric",
+        "detail": "1-2 sentence explanation using actual data",
         "trend": "up|down|stable",
         "confidence": "High|Medium|Low"
       }}
@@ -1119,9 +1189,9 @@ JSON FORMAT:
     "title": "Product Predictions",
     "items": [
       {{
-        "label": "Product insight",
-        "value": "Metric",
-        "detail": "Explanation",
+        "label": "product name or insight",
+        "value": "metric from data",
+        "detail": "specific explanation referencing actual revenue/qty numbers",
         "trend": "up|down|stable",
         "confidence": "High|Medium|Low"
       }}
@@ -1131,11 +1201,22 @@ JSON FORMAT:
     "title": "Regional Predictions",
     "items": [
       {{
-        "label": "Region insight",
-        "value": "Metric",
-        "detail": "Explanation",
+        "label": "region name or insight",
+        "value": "metric from data",
+        "detail": "specific explanation referencing actual revenue/qty numbers",
         "trend": "up|down|stable",
         "confidence": "High|Medium|Low"
+      }}
+    ]
+  }},
+  "alternatives": {{
+    "title": "Alternative Strategies",
+    "items": [
+      {{
+        "label": "strategy title",
+        "detail": "what to do and why, referencing actual products/regions",
+        "impact": "High|Medium|Low",
+        "category": "pricing|marketing|product|distribution|customer"
       }}
     ]
   }},
@@ -1143,14 +1224,15 @@ JSON FORMAT:
     "title": "Sales Improvement Recommendations",
     "items": [
       {{
-        "label": "Improvement idea",
-        "detail": "Actionable recommendation",
-        "impact": "High|Medium|Low"
+        "label": "improvement title",
+        "detail": "specific actionable recommendation with expected outcome",
+        "impact": "High|Medium|Low",
+        "category": "pricing|marketing|product|distribution|customer",
+        "expected_boost": "estimated % or value improvement"
       }}
     ]
   }}
-}}
-"""
+}}"""
 
         response = client.models.generate_content(
             model=model_name,
@@ -1158,11 +1240,10 @@ JSON FORMAT:
         )
 
         text = (response.text or '').strip()
-
-        # Clean Gemini output safely
-        import re
-        text = re.sub(r'^```(?:json)?\s*', '', text)
-        text = re.sub(r'\s*```$', '', text)
+        import re as _re
+        text = _re.sub(r'^```(?:json)?\s*', '', text)
+        text = _re.sub(r'\s*```$', '', text)
+        text = text.strip()
 
         predictions = json.loads(text)
 
@@ -1172,16 +1253,23 @@ JSON FORMAT:
             'data_summary': {
                 'total_records': summary['record_count'],
                 'total_revenue': summary['total_revenue'],
-                'products': top_products,
-                'regions': top_regions
+                'products': list(product_stats.keys())[:10],
+                'regions': list(region_stats.keys())[:10]
             }
         })
 
-    except Exception as e:
-        print(f"Prediction error: {str(e)}")
+    except json.JSONDecodeError as je:
+        print(f"Predictions JSON parse error: {str(je)}")
+        print(f"Raw AI text: {text[:500] if text else '(empty)'}")
         return jsonify({
             'available': False,
-            'message': 'Prediction service failed. Please try again.'
+            'message': 'Failed to parse AI predictions. Please try again.'
+        }), 500
+    except Exception as e:
+        print(f"Predictions error: {str(e)}")
+        return jsonify({
+            'available': False,
+            'message': f'Error generating predictions: {str(e)}'
         }), 500
     
 @app.route('/api/health', methods=['GET'])

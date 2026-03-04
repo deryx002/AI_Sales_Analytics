@@ -1209,6 +1209,10 @@ async function loadPredictions() {
         loadingEl.style.display = 'none';
         contentEl.style.display = 'block';
 
+        // Show PDF download button
+        const pdfBtn = document.getElementById('downloadPdfBtn');
+        if (pdfBtn) pdfBtn.style.display = 'flex';
+
     } catch (error) {
         console.error('Predictions error:', error);
         loadingEl.style.display = 'none';
@@ -1296,4 +1300,109 @@ function escapeHTML(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+// ============ PDF DOWNLOAD ============
+function downloadPredictionsPDF() {
+    const content = document.getElementById('predictionsContent');
+    if (!content || content.children.length === 0) {
+        alert('No predictions to download. Generate predictions first.');
+        return;
+    }
+
+    const btn = document.getElementById('downloadPdfBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+
+    // Create a clean clone for PDF rendering
+    const pdfContainer = document.createElement('div');
+    pdfContainer.style.cssText = 'padding: 30px; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; color: #2d3748; background: white;';
+
+    // Title
+    const title = document.createElement('div');
+    title.innerHTML = `
+        <div style="text-align:center; margin-bottom:24px; padding-bottom:16px; border-bottom:2px solid #4a6cf7;">
+            <h1 style="font-size:22px; color:#2d3748; margin:0 0 6px 0;">Sales Predictions & Insights</h1>
+            <p style="font-size:12px; color:#718096; margin:0;">Generated on ${new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })} • Simple Sales Analytics</p>
+        </div>
+    `;
+    pdfContainer.appendChild(title);
+
+    // Render each section
+    const sectionColors = {
+        'forecast': '#4a6cf7',
+        'products': '#48bb78',
+        'regions': '#ed8936',
+        'alternatives': '#9f7aea',
+        'improvements': '#38b2ac'
+    };
+
+    content.querySelectorAll('.pred-section').forEach(section => {
+        const sectionClone = document.createElement('div');
+        sectionClone.style.cssText = 'margin-bottom:20px; page-break-inside:avoid;';
+
+        // Section title
+        const titleEl = section.querySelector('.pred-section-title');
+        const cssClass = Array.from(section.classList).find(c => c !== 'pred-section') || 'forecast';
+        const color = sectionColors[cssClass] || '#4a6cf7';
+
+        const sectionTitle = document.createElement('div');
+        sectionTitle.style.cssText = `font-size:16px; font-weight:700; color:${color}; margin-bottom:10px; padding-bottom:4px; border-bottom:2px solid ${color}30;`;
+        sectionTitle.textContent = titleEl ? titleEl.textContent.trim() : 'Section';
+        sectionClone.appendChild(sectionTitle);
+
+        // Items
+        section.querySelectorAll('.pred-item').forEach(item => {
+            const itemDiv = document.createElement('div');
+            itemDiv.style.cssText = `background:#f8fafc; border-left:3px solid ${color}; border-radius:6px; padding:10px 14px; margin-bottom:8px;`;
+
+            const label = item.querySelector('.pred-item-label')?.textContent || '';
+            const value = item.querySelector('.pred-item-value')?.textContent || '';
+            const detail = item.querySelector('.pred-item-detail')?.textContent || '';
+
+            // Badges
+            const badges = [];
+            item.querySelectorAll('.pred-badge').forEach(b => badges.push(b.textContent.trim()));
+            const badgeText = badges.length > 0
+                ? `<div style="margin-top:6px;font-size:10px;color:#718096;">${badges.join(' • ')}</div>`
+                : '';
+
+            itemDiv.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+                    <span style="font-size:13px;font-weight:600;color:#2d3748;">${escapeHTML(label)}</span>
+                    ${value ? `<span style="font-size:13px;font-weight:700;color:${color};white-space:nowrap;">${escapeHTML(value)}</span>` : ''}
+                </div>
+                <div style="font-size:12px;color:#4a5568;line-height:1.5;">${escapeHTML(detail)}</div>
+                ${badgeText}
+            `;
+            sectionClone.appendChild(itemDiv);
+        });
+
+        pdfContainer.appendChild(sectionClone);
+    });
+
+    // Footer
+    const footer = document.createElement('div');
+    footer.innerHTML = `<div style="text-align:center;font-size:10px;color:#a0aec0;margin-top:20px;padding-top:10px;border-top:1px solid #e2e8f0;">© Team Abscond 2026 • Simple Sales Analytics Agent</div>`;
+    pdfContainer.appendChild(footer);
+
+    // Generate PDF
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `Sales_Predictions_${new Date().toISOString().slice(0, 10)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(pdfContainer).save().then(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-file-pdf"></i> Download PDF';
+    }).catch(err => {
+        console.error('PDF generation error:', err);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-file-pdf"></i> Download PDF';
+        alert('Failed to generate PDF. Please try again.');
+    });
 }

@@ -1053,6 +1053,38 @@ body {
     margin: 0;
 }
 
+.predictions-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-download-pdf {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s;
+}
+
+.btn-download-pdf:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
+}
+
+.btn-download-pdf:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .btn-refresh {
     padding: 8px 16px;
     background: linear-gradient(135deg, #4a6cf7 0%, #3a56d5 100%);

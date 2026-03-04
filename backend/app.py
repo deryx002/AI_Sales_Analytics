@@ -205,7 +205,7 @@ def _friendly_label(canonical_name, fallback):
         'branch': 'Branches', 'zone': 'Zones', 'area': 'Areas',
         'territory': 'Territories', 'market': 'Markets',
         'geography': 'Geographies', 'geo': 'Geographies',
-        'region': 'Regions',
+        'region': 'Regions', 'district': 'Districts',
     }
     key = normalize_column_key(original)
     # Check if any label_map key is contained in the normalized name
@@ -723,6 +723,49 @@ def handle_query():
             precomputed += "\n\n• Revenue by Product (pre-computed):"
             for pr, rv in sorted(product_rev.items(), key=lambda x: -x[1]):
                 precomputed += f"\n  - {pr}: ₹{rv:,.2f}"
+
+        # Compute revenue breakdowns for ALL categorical columns (district, payment, etc.)
+        skip_canonical = {'revenue', 'price', 'quantity', 'date', 'region', 'product'}
+        extra_breakdowns = {}  # col_name -> {value -> total_revenue}
+        for record in sales_data:
+            if 'data' not in record:
+                continue
+            d = record['data']
+            rev_key = first_matching_key(d, 'revenue')
+            rev_val = to_float(d.get(rev_key)) if rev_key else None
+            if rev_val is None:
+                p_key = first_matching_key(d, 'price')
+                q_key = first_matching_key(d, 'quantity')
+                if p_key and q_key:
+                    pv = to_float(d.get(p_key))
+                    qv = to_float(d.get(q_key))
+                    if pv is not None and qv is not None:
+                        rev_val = pv * qv
+            if rev_val is None:
+                continue
+            for col_name, col_value in d.items():
+                # Skip columns already covered or numeric metric columns
+                base_canonical = get_canonical_name(col_name.split('_')[0] if '_' in col_name and col_name[-1].isdigit() else col_name)
+                if base_canonical in skip_canonical:
+                    continue
+                # Skip if value looks purely numeric
+                str_val = str(col_value).strip()
+                if not str_val or str_val.lower() == 'nan':
+                    continue
+                if to_float(str_val) is not None and base_canonical not in ('region',):
+                    continue
+                if col_name not in extra_breakdowns:
+                    extra_breakdowns[col_name] = {}
+                extra_breakdowns[col_name][str_val] = extra_breakdowns[col_name].get(str_val, 0) + rev_val
+
+        for col_name, breakdown in extra_breakdowns.items():
+            # Only include columns with reasonable cardinality (2-50 unique values)
+            if len(breakdown) < 2 or len(breakdown) > 50:
+                continue
+            label = col_name.replace('_', ' ').title()
+            precomputed += f"\n\n• Revenue by {label} (pre-computed):"
+            for name, rev in sorted(breakdown.items(), key=lambda x: -x[1]):
+                precomputed += f"\n  - {name}: ₹{rev:,.2f}"
         
         # Create prompt for Gemini with COMPLETE data
         prompt = f"""You are a Sales Analytics Agent.

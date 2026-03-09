@@ -202,7 +202,7 @@ Example dataset document:
 
 Clone the repository
 
-git clone https://github.com/yourusername/ai-sales-analytics-agent.git
+git clone https://github.com/deryx002/ai-sales-analytics-agent.git
 
 Navigate to project
 

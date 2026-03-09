@@ -1,5 +1,16 @@
-// API Configuration
-const API_BASE_URL = 'https://ai-sales-analytics.onrender.com/api';
+// ============================================================
+//  API & AUTH CONFIG
+// ============================================================
+const API_BASE_URL = 'http://127.0.0.1:5000/api';
+
+// Multi-user state
+let currentUsername = localStorage.getItem('username') || '';
+let currentDatasetId = '';
+
+// If not logged in, redirect to login page
+if (!currentUsername) {
+    window.location.href = 'login.html';
+}
 
 // DOM Elements
 const fileInput = document.getElementById('fileInput');
@@ -11,22 +22,24 @@ const statusIndicator = document.getElementById('statusIndicator');
 const statusDot = document.getElementById('statusDot');
 const statusLoader = document.getElementById('statusLoader');
 const statusText = document.getElementById('statusText');
+const datasetSelector = document.getElementById('datasetSelector');
 
 // State
 let selectedFile = null;
 const productTrendCharts = {};
 
-// Initialize
+// ============================================================
+//  INITIALIZE
+// ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
     initThemeToggle();
     initGoTopButton();
     setupEventListeners();
 
-    // Clear all backend data on every page load to avoid stale Gemini API calls
-    try {
-        await fetch(`${API_BASE_URL}/clear`, { method: 'POST' });
-    } catch (e) {
-        // Backend may not be up yet — that's fine
+    // Show username in UI
+    const usernameDisplay = document.getElementById('usernameDisplay');
+    if (usernameDisplay) {
+        usernameDisplay.textContent = currentUsername;
     }
 
     // Reset predictions state
@@ -35,9 +48,349 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     checkBackendStatus();
     loadSampleFiles();
+    loadUserDatasets(); // Load user's datasets from MongoDB
+
+    // Open the Upload section by default
+    toggleSidebarSection('uploadSection', true);
 });
 
-// Go to Top button (mobile)
+// ============================================================
+//  SIDEBAR TOGGLE HELPERS
+// ============================================================
+function toggleSidebarSection(sectionId, forceOpen) {
+    const layout = document.querySelector('.app-layout');
+    const isCollapsed = layout && layout.classList.contains('sidebar-collapsed');
+
+    // If sidebar is collapsed, expand it first and open this section
+    if (isCollapsed) {
+        layout.classList.remove('sidebar-collapsed');
+        localStorage.setItem('sidebarCollapsed', '0');
+        // Fold all sections, then open the one that was clicked
+        foldAllSidebarSections();
+        const body = document.getElementById(sectionId);
+        const icon = document.getElementById(sectionId + 'Icon');
+        if (body) body.classList.add('open');
+        if (icon) icon.classList.add('open');
+        return;
+    }
+
+    const body = document.getElementById(sectionId);
+    const icon = document.getElementById(sectionId + 'Icon');
+    if (!body) return;
+
+    if (forceOpen === true) {
+        body.classList.add('open');
+        if (icon) icon.classList.add('open');
+    } else if (forceOpen === false) {
+        body.classList.remove('open');
+        if (icon) icon.classList.remove('open');
+    } else {
+        body.classList.toggle('open');
+        if (icon) icon.classList.toggle('open');
+    }
+}
+
+function foldAllSidebarSections() {
+    document.querySelectorAll('.sidebar-section-body').forEach(body => {
+        body.classList.remove('open');
+    });
+    document.querySelectorAll('.sidebar-toggle-icon').forEach(icon => {
+        icon.classList.remove('open');
+    });
+}
+
+function handleCollapsedSidebarClick(action) {
+    const layout = document.querySelector('.app-layout');
+    const isCollapsed = layout && layout.classList.contains('sidebar-collapsed');
+    if (isCollapsed) {
+        // Expand sidebar first
+        layout.classList.remove('sidebar-collapsed');
+        localStorage.setItem('sidebarCollapsed', '0');
+        foldAllSidebarSections();
+    }
+    // Execute the action
+    if (action === 'charts') {
+        generateVisualizations();
+    }
+}
+
+function toggleMobileSidebar() {
+    const sidebar = document.querySelector('.left-sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (!sidebar) return;
+    sidebar.classList.toggle('mobile-open');
+    if (overlay) overlay.classList.toggle('visible');
+}
+
+function toggleSidebarCollapse() {
+    const layout = document.querySelector('.app-layout');
+    if (!layout) return;
+    const willCollapse = !layout.classList.contains('sidebar-collapsed');
+    layout.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', willCollapse ? '1' : '0');
+    // When expanding (uncollapsing), fold all sub-sections
+    if (!willCollapse) {
+        foldAllSidebarSections();
+    }
+}
+
+function startNewChat() {
+    currentDatasetId = '';
+    datasetSelector.value = '';
+    chatMessages.innerHTML = '';
+    addMessage('Start a new conversation! Upload a dataset or pick one from your history.', 'bot');
+    // Show quick-question chips again
+    const qq = document.getElementById('quickQuestions');
+    if (qq) qq.style.display = '';
+    updateChatHistoryActive();
+    // Reset stats
+    updateStatsDisplay({
+        total_records: 0,
+        revenue: { total: 0 },
+        categories: { regions: [], products: [] },
+        dynamic_stats: [
+            { id: 'records', label: 'Records', value: 0, type: 'count' },
+            { id: 'revenue', label: 'Revenue', value: null, type: 'currency', available: false },
+            { id: 'regions', label: 'Regions', value: null, type: 'count', available: false },
+            { id: 'products', label: 'Products', value: null, type: 'count', available: false }
+        ]
+    });
+    // Reset predictions
+    window._predictionsLoaded = false;
+    _predictionsCache = null;
+    const predContent = document.getElementById('predictionsContent');
+    const predEmpty = document.getElementById('predictionsEmpty');
+    if (predContent) predContent.style.display = 'none';
+    if (predEmpty) predEmpty.style.display = 'block';
+    const pdfBtn = document.getElementById('downloadPdfBtn');
+    if (pdfBtn) pdfBtn.style.display = 'none';
+}
+
+// ============================================================
+//  LOGOUT
+// ============================================================
+function logoutUser() {
+    localStorage.removeItem('username');
+    window.location.href = 'login.html';
+}
+
+// ============================================================
+//  DATASET MANAGEMENT
+// ============================================================
+async function loadUserDatasets() {
+    if (!currentUsername) return;
+    try {
+        const res = await fetch(`${API_BASE_URL}/datasets/${encodeURIComponent(currentUsername)}`);
+        const datasets = await res.json();
+
+        datasetSelector.innerHTML = '<option value="">-- Select a dataset --</option>';
+
+        if (Array.isArray(datasets) && datasets.length > 0) {
+            datasets.forEach(ds => {
+                const opt = document.createElement('option');
+                opt.value = ds.dataset_id;
+                opt.textContent = `${ds.filename} (${ds.rows} rows) - ${new Date(ds.upload_time).toLocaleDateString()}`;
+                datasetSelector.appendChild(opt);
+            });
+            // Do NOT auto-select — start with a fresh empty chat
+            currentDatasetId = '';
+        } else {
+            currentDatasetId = '';
+        }
+        // Refresh sidebar chat history list
+        loadChatHistorySidebar();
+    } catch (err) {
+        console.error('Error loading user datasets:', err);
+    }
+}
+
+function onDatasetChange() {
+    currentDatasetId = datasetSelector.value;
+    if (currentDatasetId) {
+        loadDataSummary();
+        loadChatHistory();
+        // Reset predictions when switching datasets
+        window._predictionsLoaded = false;
+        _predictionsCache = null;
+        const predContent = document.getElementById('predictionsContent');
+        const predEmpty = document.getElementById('predictionsEmpty');
+        if (predContent) predContent.style.display = 'none';
+        if (predEmpty) predEmpty.style.display = 'block';
+        const pdfBtn = document.getElementById('downloadPdfBtn');
+        if (pdfBtn) pdfBtn.style.display = 'none';
+    } else {
+        // Clear stats display
+        updateStatsDisplay({
+            total_records: 0,
+            revenue: { total: 0 },
+            categories: { regions: [], products: [] },
+            dynamic_stats: [
+                { id: 'records', label: 'Records', value: 0, type: 'count' },
+                { id: 'revenue', label: 'Revenue', value: null, type: 'currency', available: false },
+                { id: 'regions', label: 'Regions', value: null, type: 'count', available: false },
+                { id: 'products', label: 'Products', value: null, type: 'count', available: false }
+            ]
+        });
+        renderProductInsights(null);
+    }
+    // Update active state in sidebar chat history
+    updateChatHistoryActive();
+}
+
+async function deleteCurrentDataset() {
+    if (!currentDatasetId || !currentUsername) return;
+    if (!confirm('Delete this dataset and all its chat history?')) return;
+    await _doDeleteDataset(currentDatasetId);
+}
+
+async function deleteDatasetById(datasetId, filename) {
+    if (!datasetId || !currentUsername) return;
+    if (!confirm(`Delete "${filename}" and all its chat history?`)) return;
+    await _doDeleteDataset(datasetId);
+}
+
+async function _doDeleteDataset(datasetId) {
+    try {
+        const res = await fetch(
+            `${API_BASE_URL}/datasets/${encodeURIComponent(currentUsername)}/${encodeURIComponent(datasetId)}`,
+            { method: 'DELETE' }
+        );
+        if (res.ok) {
+            addMessage('Dataset deleted successfully.', 'bot');
+            if (datasetId === currentDatasetId) {
+                currentDatasetId = '';
+            }
+            loadUserDatasets();
+        } else {
+            const data = await res.json();
+            addMessage(`Error deleting dataset: ${data.error || 'Unknown error'}`, 'bot');
+        }
+    } catch (err) {
+        addMessage('Network error while deleting dataset.', 'bot');
+    }
+}
+
+// ============================================================
+//  CHAT HISTORY (per dataset)
+// ============================================================
+async function loadChatHistory() {
+    if (!currentUsername || !currentDatasetId) return;
+
+    // Clear existing chat messages except the welcome message
+    chatMessages.innerHTML = '';
+
+    try {
+        const res = await fetch(
+            `${API_BASE_URL}/chats/${encodeURIComponent(currentUsername)}/${encodeURIComponent(currentDatasetId)}`
+        );
+        const chats = await res.json();
+
+        if (Array.isArray(chats) && chats.length > 0) {
+            // Show a brief intro
+            addMessage('Chat history loaded for this dataset.', 'bot');
+            chats.forEach(chat => {
+                addMessage(chat.query, 'user');
+                addMessage(chat.response, 'bot');
+            });
+        } else {
+            addMessage('Hello! Ask questions about this dataset.', 'bot');
+        }
+    } catch (err) {
+        addMessage('Hello! Ask questions about this dataset.', 'bot');
+    }
+}
+
+// ============================================================
+//  CHAT HISTORY SIDEBAR (list of all user datasets + previews)
+// ============================================================
+async function loadChatHistorySidebar() {
+    const listEl = document.getElementById('chatHistoryList');
+    if (!listEl || !currentUsername) return;
+
+    try {
+        // Only fetch the dataset list — NO per-dataset chat API calls
+        const res = await fetch(`${API_BASE_URL}/datasets/${encodeURIComponent(currentUsername)}`);
+        const datasets = await res.json();
+
+        if (!Array.isArray(datasets) || datasets.length === 0) {
+            listEl.innerHTML = `
+                <div class="chat-history-empty">
+                    <i class="fas fa-comments"></i>
+                    <p>No previous chats</p>
+                </div>`;
+            return;
+        }
+
+        const items = datasets.map(ds => {
+            const uploadDate = new Date(ds.upload_time);
+            const dateStr = uploadDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            const isActive = ds.dataset_id === currentDatasetId;
+
+            return `
+                <div class="chat-history-item${isActive ? ' active' : ''}"
+                     onclick="switchToDataset('${ds.dataset_id}')" title="${ds.filename}">
+                    <div class="ch-icon"><i class="fas fa-file-alt"></i></div>
+                    <div class="ch-info">
+                        <div class="ch-name">${ds.filename}</div>
+                        <div class="ch-meta">${dateStr} · ${ds.rows} rows</div>
+                    </div>
+                    <button class="ch-delete-btn" onclick="event.stopPropagation(); deleteDatasetById('${ds.dataset_id}', '${ds.filename.replace(/'/g, "\\'")}')" title="Delete dataset">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>`;
+        });
+
+        listEl.innerHTML = items.join('');
+    } catch (err) {
+        console.error('Error loading chat history sidebar:', err);
+    }
+}
+
+function truncate(str, max) {
+    if (!str) return '';
+    return str.length > max ? str.substring(0, max) + '…' : str;
+}
+
+function switchToDataset(datasetId) {
+    currentDatasetId = datasetId;
+    datasetSelector.value = datasetId;
+    // Load this dataset's data summary + chat history
+    if (currentDatasetId) {
+        loadDataSummary();
+        loadChatHistory();
+        // Reset predictions
+        window._predictionsLoaded = false;
+        _predictionsCache = null;
+        const predContent = document.getElementById('predictionsContent');
+        const predEmpty = document.getElementById('predictionsEmpty');
+        if (predContent) predContent.style.display = 'none';
+        if (predEmpty) predEmpty.style.display = 'block';
+        const pdfBtn = document.getElementById('downloadPdfBtn');
+        if (pdfBtn) pdfBtn.style.display = 'none';
+    }
+    updateChatHistoryActive();
+    // Close mobile sidebar if open
+    const sidebar = document.querySelector('.left-sidebar');
+    if (sidebar && sidebar.classList.contains('mobile-open')) {
+        toggleMobileSidebar();
+    }
+}
+
+function updateChatHistoryActive() {
+    const items = document.querySelectorAll('.chat-history-item');
+    items.forEach(item => {
+        const dsId = item.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+        if (dsId === currentDatasetId) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
+// ============================================================
+//  GO TO TOP & THEME
+// ============================================================
 function initGoTopButton() {
     const btn = document.getElementById('goTopBtn');
     if (!btn) return;
@@ -46,7 +399,6 @@ function initGoTopButton() {
     }, { passive: true });
 }
 
-// Theme Toggle
 function initThemeToggle() {
     const toggle = document.getElementById('themeToggle');
     const saved = localStorage.getItem('theme');
@@ -60,7 +412,9 @@ function initThemeToggle() {
     });
 }
 
-// Event Listeners
+// ============================================================
+//  EVENT LISTENERS
+// ============================================================
 function setupEventListeners() {
     // File input change
     fileInput.addEventListener('change', (e) => {
@@ -70,7 +424,7 @@ function setupEventListeners() {
             fileInfo.style.color = '#4a5568';
         }
     });
-    
+
     // Drag and drop
     const uploadBox = document.getElementById('uploadBox');
     uploadBox.addEventListener('dragover', (e) => {
@@ -78,17 +432,17 @@ function setupEventListeners() {
         uploadBox.style.borderColor = '#3a56d5';
         uploadBox.style.background = 'rgba(74, 108, 247, 0.05)';
     });
-    
+
     uploadBox.addEventListener('dragleave', () => {
         uploadBox.style.borderColor = '#4a6cf7';
         uploadBox.style.background = '';
     });
-    
+
     uploadBox.addEventListener('drop', (e) => {
         e.preventDefault();
         uploadBox.style.borderColor = '#4a6cf7';
         uploadBox.style.background = '';
-        
+
         if (e.dataTransfer.files.length > 0) {
             selectedFile = e.dataTransfer.files[0];
             fileInput.files = e.dataTransfer.files;
@@ -96,7 +450,7 @@ function setupEventListeners() {
             fileInfo.style.color = '#4a5568';
         }
     });
-    
+
     // Enter key in input
     userInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -105,7 +459,9 @@ function setupEventListeners() {
     });
 }
 
-// Format file size
+// ============================================================
+//  UTILITIES
+// ============================================================
 function formatBytes(bytes, decimals = 2) {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -115,7 +471,34 @@ function formatBytes(bytes, decimals = 2) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-// Check backend status
+function formatINRShort(value) {
+    if (!value || isNaN(value)) return "₹0";
+    if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)} Crore`;
+    if (value >= 100000) return `₹${(value / 100000).toFixed(2)} Lakh`;
+    if (value >= 1000) return `₹${(value / 1000).toFixed(2)} Thousand`;
+    return `₹${value}`;
+}
+
+function formatINR(value) {
+    return formatINRShort(value);
+}
+
+function formatProductMetric(value, metricKey) {
+    if (value == null || isNaN(value)) return 'N/A';
+    if (metricKey === 'quantity') return `${Math.round(value)} units`;
+    return formatINRShort(value);
+}
+
+function escapeHTML(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ============================================================
+//  BACKEND STATUS
+// ============================================================
 async function checkBackendStatus() {
     try {
         const response = await fetch(`${API_BASE_URL}/health`);
@@ -131,20 +514,17 @@ async function checkBackendStatus() {
 
 function setStatus(status, message) {
     if (status === 'online') {
-        // Hide loader, show green dot
         statusLoader.style.display = 'none';
         statusDot.style.display = 'inline-block';
         statusDot.style.background = '#48bb78';
         statusText.textContent = message || 'Connected';
         statusText.style.color = '#48bb78';
     } else if (status === 'loading') {
-        // Show loader, hide dot
         statusLoader.style.display = 'flex';
         statusDot.style.display = 'none';
         statusText.textContent = message || 'Initializing Backend';
         statusText.style.color = '#666';
     } else {
-        // Offline – red dot, no loader
         statusLoader.style.display = 'none';
         statusDot.style.display = 'inline-block';
         statusDot.style.background = '#f56565';
@@ -153,16 +533,18 @@ function setStatus(status, message) {
     }
 }
 
+// ============================================================
+//  CLEAR CHAT
+// ============================================================
 function clearChat() {
     if (!confirm("Clear all chat messages?")) return;
-
-    const chatArea = document.getElementById("chatMessages");
-    chatArea.innerHTML = "";
-
-    addMessage("👋 Chat cleared. Ask a new question!", "bot");
+    chatMessages.innerHTML = "";
+    addMessage("Chat cleared. Ask a new question!", "bot");
 }
 
-// Sample Data Files
+// ============================================================
+//  SAMPLE DATA
+// ============================================================
 async function loadSampleFiles() {
     const sampleList = document.getElementById('sampleList');
     try {
@@ -198,21 +580,36 @@ async function loadSampleFiles() {
     }
 }
 
+let _sampleLoadInProgress = false;
 async function loadSampleData(filename, itemEl) {
+    if (_sampleLoadInProgress) return; // prevent double-click
+    _sampleLoadInProgress = true;
     const btn = itemEl.querySelector('.sample-load-btn');
     const originalHTML = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
     btn.disabled = true;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/samples/${encodeURIComponent(filename)}`);
+        // Pass username so sample data is saved to user's account
+        let url = `${API_BASE_URL}/samples/${encodeURIComponent(filename)}`;
+        if (currentUsername) {
+            url += `?username=${encodeURIComponent(currentUsername)}`;
+        }
+        const response = await fetch(url);
         const result = await response.json();
 
         if (response.ok) {
             btn.innerHTML = '<i class="fas fa-check"></i> Loaded';
             btn.style.background = '#48bb78';
 
-            addMessage(`✅ Sample file "${filename}" loaded with ${result.records_added} records. You can now ask questions about this data.`, 'bot');
+            // If server returned a dataset_id, set it as current
+            if (result.dataset_id) {
+                currentDatasetId = result.dataset_id;
+                await loadUserDatasets();
+                datasetSelector.value = currentDatasetId;
+            }
+
+            addMessage(`Sample file "${filename}" loaded with ${result.records_added} records. You can now ask questions about this data.`, 'bot');
             loadDataSummary();
         } else {
             btn.innerHTML = '<i class="fas fa-times"></i> Error';
@@ -223,43 +620,54 @@ async function loadSampleData(filename, itemEl) {
         btn.innerHTML = '<i class="fas fa-times"></i> Error';
         btn.style.background = '#f56565';
         setTimeout(() => { btn.innerHTML = originalHTML; btn.style.background = ''; btn.disabled = false; }, 2000);
+    } finally {
+        _sampleLoadInProgress = false;
     }
 }
 
-
-
-// Upload file
+// ============================================================
+//  UPLOAD FILE (multi-user)
+// ============================================================
+let _uploadInProgress = false;
 async function uploadFile() {
+    if (_uploadInProgress) return; // prevent double-click
     if (!selectedFile) {
         fileInfo.textContent = 'Please select a file first';
         fileInfo.style.color = '#f56565';
         return;
     }
-    
-    // Disable upload button and show loading
+    _uploadInProgress = true;
+
     const originalText = uploadBtn.innerHTML;
     uploadBtn.innerHTML = '<span class="loading"><span></span><span></span><span></span></span> Processing...';
     uploadBtn.disabled = true;
-    
+
     const formData = new FormData();
     formData.append('file', selectedFile);
-    
+    if (currentUsername) {
+        formData.append('username', currentUsername);
+    }
+
     try {
         const response = await fetch(`${API_BASE_URL}/upload`, {
             method: 'POST',
             body: formData
         });
-        
+
         const result = await response.json();
-        
+
         if (response.ok) {
             fileInfo.textContent = `✓ ${selectedFile.name} processed successfully (${result.records_added} records)`;
             fileInfo.style.color = '#48bb78';
-            
-            // Add success message to chat
+
+            // Set the new dataset as current
+            if (result.dataset_id) {
+                currentDatasetId = result.dataset_id;
+                await loadUserDatasets();
+                datasetSelector.value = currentDatasetId;
+            }
+
             addMessage(`Successfully processed ${selectedFile.name} with ${result.records_added} records. You can now ask questions about this data.`, 'bot');
-            
-            // Update data summary
             loadDataSummary();
         } else {
             fileInfo.textContent = `✗ Error: ${result.error}`;
@@ -269,22 +677,26 @@ async function uploadFile() {
         fileInfo.textContent = '✗ Network error. Is the backend running?';
         fileInfo.style.color = '#f56565';
     } finally {
-        // Restore upload button
         uploadBtn.innerHTML = originalText;
         uploadBtn.disabled = false;
-        
-        // Clear selected file
         selectedFile = null;
         fileInput.value = '';
+        _uploadInProgress = false;
     }
 }
 
-// Load data summary
+// ============================================================
+//  DATA SUMMARY (multi-user)
+// ============================================================
 async function loadDataSummary() {
     try {
-        const response = await fetch(`${API_BASE_URL}/data/summary`);
+        let url = `${API_BASE_URL}/data/summary`;
+        if (currentUsername && currentDatasetId) {
+            url += `?username=${encodeURIComponent(currentUsername)}&dataset_id=${encodeURIComponent(currentDatasetId)}`;
+        }
+        const response = await fetch(url);
         const summary = await response.json();
-        
+
         if (response.ok) {
             updateStatsDisplay(summary);
             renderProductInsights(summary.product_insights);
@@ -294,27 +706,82 @@ async function loadDataSummary() {
     }
 }
 
-function formatINRShort(value) {
-    if (!value || isNaN(value)) return "₹0";
+// ============================================================
+//  STATS DISPLAY
+// ============================================================
+function updateStatsDisplay(summary) {
+    const totalRecordsEl = document.getElementById('totalRecords');
+    const totalRevenueEl = document.getElementById('totalRevenue');
+    const regionsCountEl = document.getElementById('regionsCount');
+    const productsCountEl = document.getElementById('productsCount');
 
-    if (value >= 10000000) {
-        return `₹${(value / 10000000).toFixed(2)} Crore`;
+    const totalRecordsLabelEl = document.getElementById('totalRecordsLabel');
+    const totalRevenueLabelEl = document.getElementById('totalRevenueLabel');
+    const regionsCountLabelEl = document.getElementById('regionsCountLabel');
+    const productsCountLabelEl = document.getElementById('productsCountLabel');
+
+    totalRecordsLabelEl.textContent = 'Records';
+    totalRevenueLabelEl.textContent = 'Revenue';
+    regionsCountLabelEl.textContent = 'Regions';
+    productsCountLabelEl.textContent = 'Products';
+
+    const hasDynamicStats = summary.dynamic_stats && Array.isArray(summary.dynamic_stats);
+    if (hasDynamicStats) {
+        const statsById = Object.fromEntries(
+            summary.dynamic_stats.map((entry) => [entry.id, entry])
+        );
+
+        const recordsStat = statsById.records;
+        totalRecordsEl.textContent = recordsStat && recordsStat.value != null
+            ? recordsStat.value
+            : (summary.total_records || 0);
+
+        const revenueStat = statsById.revenue;
+        if (revenueStat && revenueStat.available === false) {
+            totalRevenueEl.textContent = 'N/A';
+            totalRevenueLabelEl.textContent = 'Revenue (Not in data)';
+        } else {
+            const revenueValue = revenueStat && revenueStat.value != null
+                ? revenueStat.value
+                : (summary.revenue ? summary.revenue.total : 0);
+            totalRevenueEl.textContent = formatINRShort(revenueValue || 0);
+        }
+
+        const regionsStat = statsById.regions;
+        if (regionsStat && regionsStat.available === false) {
+            regionsCountEl.textContent = 'N/A';
+            regionsCountLabelEl.textContent = (regionsStat.label || 'Regions') + ' (Not in data)';
+        } else {
+            regionsCountLabelEl.textContent = regionsStat?.label || 'Regions';
+            const regionsValue = regionsStat && regionsStat.value != null
+                ? regionsStat.value
+                : (summary.categories ? summary.categories.regions.length : 0);
+            regionsCountEl.textContent = regionsValue;
+        }
+
+        const productsStat = statsById.products;
+        if (productsStat && productsStat.available === false) {
+            productsCountEl.textContent = 'N/A';
+            productsCountLabelEl.textContent = (productsStat.label || 'Products') + ' (Not in data)';
+        } else {
+            productsCountLabelEl.textContent = productsStat?.label || 'Products';
+            const productsValue = productsStat && productsStat.value != null
+                ? productsStat.value
+                : (summary.categories ? summary.categories.products.length : 0);
+            productsCountEl.textContent = productsValue;
+        }
+        return;
     }
-    if (value >= 100000) {
-        return `₹${(value / 100000).toFixed(2)} Lakh`;
-    }
-    if (value >= 1000) {
-        return `₹${(value / 1000).toFixed(2)} Thousand`;
-    }
-    return `₹${value}`;
+
+    totalRecordsEl.textContent = summary.total_records || 0;
+    totalRevenueEl.textContent = summary.revenue ? formatINRShort(summary.revenue.total) : '₹0';
+    regionsCountEl.textContent = summary.categories ? summary.categories.regions.length : 0;
+    productsCountEl.textContent = summary.categories ? summary.categories.products.length : 0;
 }
 
-function formatProductMetric(value, metricKey) {
-    if (value == null || isNaN(value)) return 'N/A';
-    if (metricKey === 'quantity') return `${Math.round(value)} units`;
-    return formatINRShort(value);
-}
-
+// ============================================================
+//  PRODUCT INSIGHTS
+// ============================================================
 function renderProductInsights(productInsights) {
     const section = document.getElementById('salesInsightsSection');
     if (!section) return;
@@ -430,54 +897,38 @@ function renderProductTrendChart(canvasId, trendData, label, lineColor) {
         const diff = endValue - startValue;
 
         if (Math.abs(diff) <= flatThreshold) {
-            return {
-                border: '#d69e2e',
-                fill: 'rgba(214, 158, 46, 0.20)'
-            };
+            return { border: '#d69e2e', fill: 'rgba(214, 158, 46, 0.20)' };
         }
-
         if (diff > 0) {
-            return {
-                border: '#38a169',
-                fill: 'rgba(56, 161, 105, 0.20)'
-            };
+            return { border: '#38a169', fill: 'rgba(56, 161, 105, 0.20)' };
         }
-
-        return {
-            border: '#e53e3e',
-            fill: 'rgba(229, 62, 62, 0.20)'
-        };
+        return { border: '#e53e3e', fill: 'rgba(229, 62, 62, 0.20)' };
     };
 
     productTrendCharts[canvasId] = new Chart(canvas, {
         type: 'line',
         data: {
             labels,
-            datasets: [
-                {
-                    label,
-                    data: values,
-                    borderColor: lineColor,
-                    backgroundColor: `${lineColor}33`,
-                    fill: true,
-                    tension: 0.3,
-                    borderWidth: 2,
-                    pointRadius: 2,
-                    pointHoverRadius: 5,
-                    segment: {
-                        borderColor: (context) => getSegmentPalette(context).border,
-                        backgroundColor: (context) => getSegmentPalette(context).fill
-                    }
+            datasets: [{
+                label,
+                data: values,
+                borderColor: lineColor,
+                backgroundColor: `${lineColor}33`,
+                fill: true,
+                tension: 0.3,
+                borderWidth: 2,
+                pointRadius: 2,
+                pointHoverRadius: 5,
+                segment: {
+                    borderColor: (context) => getSegmentPalette(context).border,
+                    backgroundColor: (context) => getSegmentPalette(context).fill
                 }
-            ]
+            }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
+            interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -486,9 +937,7 @@ function renderProductTrendChart(canvasId, trendData, label, lineColor) {
                         title: (tooltipItems) => tooltipItems[0]?.label || '',
                         label: (tooltipItem) => {
                             const value = tooltipItem.raw;
-                            if (metricType === 'quantity') {
-                                return `Units: ${Math.round(value)}`;
-                            }
+                            if (metricType === 'quantity') return `Units: ${Math.round(value)}`;
                             return `Revenue: ${formatINRShort(value)}`;
                         }
                     }
@@ -501,8 +950,7 @@ function renderProductTrendChart(canvasId, trendData, label, lineColor) {
                         color: '#718096',
                         callback: (tickValue, index) => {
                             if (!importantIndices.has(index)) return '';
-                            const raw = labels[index] || '';
-                            return raw;
+                            return labels[index] || '';
                         }
                     },
                     grid: { display: false }
@@ -522,93 +970,19 @@ function renderProductTrendChart(canvasId, trendData, label, lineColor) {
     });
 }
 
-
-function updateStatsDisplay(summary) { 
-    const totalRecordsEl = document.getElementById('totalRecords');
-    const totalRevenueEl = document.getElementById('totalRevenue');
-    const regionsCountEl = document.getElementById('regionsCount');
-    const productsCountEl = document.getElementById('productsCount');
-
-    const totalRecordsLabelEl = document.getElementById('totalRecordsLabel');
-    const totalRevenueLabelEl = document.getElementById('totalRevenueLabel');
-    const regionsCountLabelEl = document.getElementById('regionsCountLabel');
-    const productsCountLabelEl = document.getElementById('productsCountLabel');
-
-    totalRecordsLabelEl.textContent = 'Records';
-    totalRevenueLabelEl.textContent = 'Revenue';
-    regionsCountLabelEl.textContent = 'Regions';
-    productsCountLabelEl.textContent = 'Products';
-
-    const hasDynamicStats = summary.dynamic_stats && Array.isArray(summary.dynamic_stats);
-    if (hasDynamicStats) {
-        const statsById = Object.fromEntries(
-            summary.dynamic_stats.map((entry) => [entry.id, entry])
-        );
-
-        const recordsStat = statsById.records;
-        totalRecordsEl.textContent = recordsStat && recordsStat.value != null
-            ? recordsStat.value
-            : (summary.total_records || 0);
-
-        const revenueStat = statsById.revenue;
-        if (revenueStat && revenueStat.available === false) {
-            totalRevenueEl.textContent = 'N/A';
-            totalRevenueLabelEl.textContent = 'Revenue (Not in data)';
-        } else {
-            const revenueValue = revenueStat && revenueStat.value != null
-                ? revenueStat.value
-                : (summary.revenue ? summary.revenue.total : 0);
-            totalRevenueEl.textContent = formatINRShort(revenueValue || 0);
-        }
-
-        const regionsStat = statsById.regions;
-        if (regionsStat && regionsStat.available === false) {
-            regionsCountEl.textContent = 'N/A';
-            regionsCountLabelEl.textContent = (regionsStat.label || 'Regions') + ' (Not in data)';
-        } else {
-            regionsCountLabelEl.textContent = regionsStat?.label || 'Regions';
-            const regionsValue = regionsStat && regionsStat.value != null
-                ? regionsStat.value
-                : (summary.categories ? summary.categories.regions.length : 0);
-            regionsCountEl.textContent = regionsValue;
-        }
-
-        const productsStat = statsById.products;
-        if (productsStat && productsStat.available === false) {
-            productsCountEl.textContent = 'N/A';
-            productsCountLabelEl.textContent = (productsStat.label || 'Products') + ' (Not in data)';
-        } else {
-            productsCountLabelEl.textContent = productsStat?.label || 'Products';
-            const productsValue = productsStat && productsStat.value != null
-                ? productsStat.value
-                : (summary.categories ? summary.categories.products.length : 0);
-            productsCountEl.textContent = productsValue;
-        }
-
-        return;
-    }
-
-    totalRecordsEl.textContent = summary.total_records || 0;
-    totalRevenueEl.textContent = summary.revenue ? formatINRShort(summary.revenue.total) : '₹0';
-    regionsCountEl.textContent = summary.categories ? summary.categories.regions.length : 0;
-    productsCountEl.textContent = summary.categories ? summary.categories.products.length : 0;
-}
-
-
-// Clear all data
+// ============================================================
+//  CLEAR DATA
+// ============================================================
 async function clearData() {
     if (!confirm('Are you sure you want to clear all data?')) return;
-    
+
     try {
-        const response = await fetch(`${API_BASE_URL}/clear`, {
-            method: 'POST'
-        });
-        
+        const response = await fetch(`${API_BASE_URL}/clear`, { method: 'POST' });
+
         if (response.ok) {
             fileInfo.textContent = 'All data cleared successfully';
             fileInfo.style.color = '#48bb78';
-            
-            // Update stats
+
             updateStatsDisplay({
                 total_records: 0,
                 revenue: { total: 0 },
@@ -621,11 +995,9 @@ async function clearData() {
                 ]
             });
             renderProductInsights(null);
-            
-            // Add message to chat
+
             addMessage('All data has been cleared. You can upload new files to start fresh.', 'bot');
 
-            // Reset predictions tab
             window._predictionsLoaded = false;
             _predictionsCache = null;
             const predContent = document.getElementById('predictionsContent');
@@ -634,7 +1006,7 @@ async function clearData() {
             if (predEmpty) {
                 predEmpty.style.display = 'block';
                 predEmpty.querySelector('h3').textContent = 'No Data Loaded';
-                predEmpty.querySelector('p').textContent = 'Upload a CSV/Excel file first, then switch here to see AI-generated predictions, alternative strategies, and improvement recommendations.';
+                predEmpty.querySelector('p').textContent = 'Upload a CSV/Excel file first, then switch here to see AI-generated predictions.';
             }
         }
     } catch (error) {
@@ -642,7 +1014,9 @@ async function clearData() {
     }
 }
 
-// Chat functions
+// ============================================================
+//  CHAT FUNCTIONS (multi-user)
+// ============================================================
 function askQuestion(question) {
     userInput.value = question;
     sendMessage();
@@ -651,35 +1025,36 @@ function askQuestion(question) {
 async function sendMessage() {
     const query = userInput.value.trim();
     if (!query) return;
-    
-    // Add user message
+
+    // Hide quick-question chips after first query
+    const qq = document.getElementById('quickQuestions');
+    if (qq) qq.style.display = 'none';
+
     addMessage(query, 'user');
-    
-    // Clear input
     userInput.value = '';
-    
-    // Show loading
     const loadingId = addLoadingMessage();
-    
+
     try {
+        const body = { query };
+        if (currentUsername) body.username = currentUsername;
+        if (currentDatasetId) body.dataset_id = currentDatasetId;
+
         const response = await fetch(`${API_BASE_URL}/query`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ query })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
         });
-        
+
         const result = await response.json();
-        
-        // Remove loading
         removeMessage(loadingId);
-        
+
         if (response.ok) {
-            // Add bot response
             addMessage(result.response, 'bot');
-            
-            // Update stats if they changed
+
+            if (result.visualizations && Object.keys(result.visualizations).length > 0) {
+                displayCharts(result.visualizations);
+            }
+
             if (result.data_summary) {
                 updateStatsDisplay(result.data_summary);
                 renderProductInsights(result.data_summary.product_insights);
@@ -689,20 +1064,19 @@ async function sendMessage() {
         }
     } catch (error) {
         removeMessage(loadingId);
-        addMessage('Cannot connect to the backend server. Make sure it is running on port 5000.', 'bot');
+        addMessage('Cannot connect to the backend server. Make sure it is running.', 'bot');
     }
 }
 
 function addMessage(content, sender) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}`;
-    
+
     const avatarIcon = sender === 'user' ? 'fas fa-user' : 'fas fa-robot';
     const senderName = sender === 'user' ? 'You' : 'Sales Assistant';
-    
-    // Format content with line breaks
+
     const formattedContent = content.replace(/\n/g, '<br>');
-    
+
     messageDiv.innerHTML = `
         <div class="avatar">
             <i class="${avatarIcon}"></i>
@@ -712,10 +1086,9 @@ function addMessage(content, sender) {
             <p>${formattedContent}</p>
         </div>
     `;
-    
+
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-    
     return messageDiv.id;
 }
 
@@ -723,7 +1096,7 @@ function addLoadingMessage() {
     const messageDiv = document.createElement('div');
     messageDiv.id = 'loading-' + Date.now();
     messageDiv.className = 'message bot';
-    
+
     messageDiv.innerHTML = `
         <div class="avatar">
             <i class="fas fa-robot"></i>
@@ -733,40 +1106,31 @@ function addLoadingMessage() {
             <p><span class="loading"><span></span><span></span><span></span></span> Analyzing your question...</p>
         </div>
     `;
-    
+
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-    
     return messageDiv.id;
 }
 
 function removeMessage(messageId) {
     const element = document.getElementById(messageId);
-    if (element) {
-        element.remove();
-    }
+    if (element) element.remove();
 }
 
 function handleKeyPress(e) {
-    if (e.key === 'Enter') {
-        sendMessage();
-    }
+    if (e.key === 'Enter') sendMessage();
 }
-// Add to existing script.js - After the existing functions
 
-// Display charts in chat
+// ============================================================
+//  VISUALIZATIONS (multi-user)
+// ============================================================
 function displayCharts(charts) {
-    if (!charts || Object.keys(charts).length === 0) {
-        return;
-    }
-    
-    const chatMessages = document.getElementById('chatMessages');
-    
-    // Create a message container for charts
+    if (!charts || Object.keys(charts).length === 0) return;
+
     const chartMessage = document.createElement('div');
     chartMessage.className = 'message bot';
     chartMessage.id = 'charts-' + Date.now();
-    
+
     let chartsHTML = `
         <div class="avatar">
             <i class="fas fa-chart-bar"></i>
@@ -776,9 +1140,8 @@ function displayCharts(charts) {
             <p>Here are some charts generated from your data:</p>
             <div class="charts-container">
     `;
-    
-    // Add each chart
-    Object.entries(charts).forEach(([chartName, chartData], index) => {
+
+    Object.entries(charts).forEach(([chartName, chartData]) => {
         const chartLabels = {
             'revenue_trend': 'Revenue Trend Over Time',
             'regional_sales': 'Sales by Region',
@@ -787,14 +1150,14 @@ function displayCharts(charts) {
             'monthly_trend': 'Monthly Revenue Trend',
             'pipeline_stages': 'Pipeline Stages'
         };
-        
+
         const label = chartLabels[chartName] || chartName.replace('_', ' ').toUpperCase();
-        
+
         chartsHTML += `
             <div class="chart-card">
                 <h4>${label}</h4>
-                <img src="data:image/png;base64,${chartData}" 
-                     alt="${label}" 
+                <img src="data:image/png;base64,${chartData}"
+                     alt="${label}"
                      class="chart-image"
                      onclick="showFullChart('${chartName}', '${chartData}')">
                 <div class="chart-actions">
@@ -805,7 +1168,7 @@ function displayCharts(charts) {
             </div>
         `;
     });
-    
+
     chartsHTML += `
             </div>
             <p class="chart-note">
@@ -814,16 +1177,13 @@ function displayCharts(charts) {
             </p>
         </div>
     `;
-    
+
     chartMessage.innerHTML = chartsHTML;
     chatMessages.appendChild(chartMessage);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-    
-    // Add CSS for charts if not already added
     addChartStyles();
 }
 
-// Show full-size chart
 function showFullChart(chartName, chartData) {
     const modal = document.createElement('div');
     modal.className = 'chart-modal';
@@ -836,8 +1196,8 @@ function showFullChart(chartName, chartData) {
                 </button>
             </div>
             <div class="chart-modal-body">
-                <img src="data:image/png;base64,${chartData}" 
-                     alt="${chartName}" 
+                <img src="data:image/png;base64,${chartData}"
+                     alt="${chartName}"
                      class="full-chart-image">
             </div>
             <div class="chart-modal-footer">
@@ -847,11 +1207,9 @@ function showFullChart(chartName, chartData) {
             </div>
         </div>
     `;
-    
     document.body.appendChild(modal);
 }
 
-// Download chart
 function downloadChart(chartName, chartData) {
     const link = document.createElement('a');
     link.href = 'data:image/png;base64,' + chartData;
@@ -861,12 +1219,9 @@ function downloadChart(chartName, chartData) {
     document.body.removeChild(link);
 }
 
-// Add chart styles dynamically
 function addChartStyles() {
-    if (document.getElementById('chart-styles')) {
-        return;
-    }
-    
+    if (document.getElementById('chart-styles')) return;
+
     const style = document.createElement('style');
     style.id = 'chart-styles';
     style.textContent = `
@@ -876,7 +1231,6 @@ function addChartStyles() {
             gap: 20px;
             margin: 15px 0;
         }
-        
         .chart-card {
             background: white;
             border-radius: 8px;
@@ -884,19 +1238,16 @@ function addChartStyles() {
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             transition: transform 0.3s;
         }
-        
         .chart-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
-        
         .chart-card h4 {
             margin: 0 0 10px 0;
             font-size: 14px;
             color: #2d3748;
             text-align: center;
         }
-        
         .chart-image {
             width: 100%;
             height: 200px;
@@ -906,16 +1257,11 @@ function addChartStyles() {
             border: 1px solid #e2e8f0;
             transition: transform 0.3s;
         }
-        
-        .chart-image:hover {
-            transform: scale(1.02);
-        }
-        
+        .chart-image:hover { transform: scale(1.02); }
         .chart-actions {
             margin-top: 10px;
             text-align: center;
         }
-        
         .chart-actions button {
             background: #4a6cf7;
             color: white;
@@ -928,7 +1274,6 @@ function addChartStyles() {
             align-items: center;
             gap: 5px;
         }
-        
         .chart-note {
             font-size: 12px;
             color: #718096;
@@ -937,13 +1282,10 @@ function addChartStyles() {
             align-items: center;
             gap: 5px;
         }
-        
         .chart-modal {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             background: rgba(0,0,0,0.8);
             display: flex;
             align-items: center;
@@ -951,12 +1293,7 @@ function addChartStyles() {
             z-index: 1000;
             animation: fadeIn 0.3s;
         }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .chart-modal-content {
             background: white;
             border-radius: 12px;
@@ -966,12 +1303,10 @@ function addChartStyles() {
             overflow: hidden;
             animation: slideUp 0.3s;
         }
-        
         @keyframes slideUp {
             from { transform: translateY(50px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
-        
         .chart-modal-header {
             padding: 20px;
             border-bottom: 1px solid #e2e8f0;
@@ -979,12 +1314,7 @@ function addChartStyles() {
             justify-content: space-between;
             align-items: center;
         }
-        
-        .chart-modal-header h3 {
-            margin: 0;
-            color: #2d3748;
-        }
-        
+        .chart-modal-header h3 { margin: 0; color: #2d3748; }
         .close-chart {
             background: none;
             border: none;
@@ -993,26 +1323,22 @@ function addChartStyles() {
             cursor: pointer;
             padding: 5px;
         }
-        
         .chart-modal-body {
             padding: 20px;
             text-align: center;
             max-height: 60vh;
             overflow-y: auto;
         }
-        
         .full-chart-image {
             max-width: 100%;
             max-height: 60vh;
             object-fit: contain;
         }
-        
         .chart-modal-footer {
             padding: 15px 20px;
             border-top: 1px solid #e2e8f0;
             text-align: center;
         }
-        
         .chart-modal-footer button {
             background: #4a6cf7;
             color: white;
@@ -1024,122 +1350,31 @@ function addChartStyles() {
             align-items: center;
             gap: 8px;
         }
-        
         @media (max-width: 768px) {
-            .charts-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .chart-modal-content {
-                width: 95%;
-                max-height: 85vh;
-            }
-
-            .chart-image {
-                height: 160px;
-            }
-
-            .chart-modal-body {
-                padding: 12px;
-            }
-
-            .full-chart-image {
-                max-height: 50vh;
-            }
-
-            .chart-card {
-                padding: 10px;
-            }
-
-            .chart-card h4 {
-                font-size: 13px;
-            }
+            .charts-container { grid-template-columns: 1fr; }
+            .chart-modal-content { width: 95%; max-height: 85vh; }
+            .chart-image { height: 160px; }
+            .chart-modal-body { padding: 12px; }
+            .full-chart-image { max-height: 50vh; }
+            .chart-card { padding: 10px; }
+            .chart-card h4 { font-size: 13px; }
         }
     `;
-    
     document.head.appendChild(style);
 }
 
-// Update the sendMessage function to handle visualizations
-// Find the existing sendMessage function and update it:
-
-async function sendMessage() {
-    const query = userInput.value.trim();
-    if (!query) return;
-    
-    // Add user message
-    addMessage(query, 'user');
-    
-    // Clear input
-    userInput.value = '';
-    
-    // Show loading
-    const loadingId = addLoadingMessage();
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/query`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ query })
-        });
-        
-        const result = await response.json();
-        
-        // Remove loading
-        removeMessage(loadingId);
-        
-        if (response.ok) {
-            // Add bot response
-            addMessage(result.response, 'bot');
-            
-            // Display charts if available
-            if (result.visualizations && Object.keys(result.visualizations).length > 0) {
-                displayCharts(result.visualizations);
-            }
-            
-            // Update stats
-            if (result.data_summary) {
-                updateStatsDisplay(result.data_summary);
-                renderProductInsights(result.data_summary.product_insights);
-            }
-        } else {
-            addMessage(`Error: ${result.error}`, 'bot');
-        }
-    } catch (error) {
-        removeMessage(loadingId);
-        addMessage('Cannot connect to the backend server. Make sure it is running on port 5000.', 'bot');
-    }
-}
-
-function formatINR(value) {
-    if (value >= 10000000) {
-        return `₹${(value / 10000000).toFixed(2)} Crore`;
-    } else if (value >= 100000) {
-        return `₹${(value / 100000).toFixed(2)} Lakh`;
-    } else if (value >= 1000) {
-        return `₹${(value / 1000).toFixed(2)} Thousand`;
-    } else {
-        return `₹${value}`;
-    }
-}
-
-
-// Add this function to script.js
 async function generateVisualizations() {
     try {
-        const response = await fetch(`${API_BASE_URL}/visualizations`);
+        let url = `${API_BASE_URL}/visualizations`;
+        if (currentUsername && currentDatasetId) {
+            url += `?username=${encodeURIComponent(currentUsername)}&dataset_id=${encodeURIComponent(currentDatasetId)}`;
+        }
+        const response = await fetch(url);
         const result = await response.json();
-        
+
         if (response.ok) {
-            // Add message about charts
             addMessage(`Generated ${result.charts ? Object.keys(result.charts).length : 0} visualization(s) from the data.`, 'bot');
-            
-            // Display the charts
-            if (result.charts) {
-                displayCharts(result.charts);
-            }
+            if (result.charts) displayCharts(result.charts);
         } else {
             addMessage(`Error generating charts: ${result.error}`, 'bot');
         }
@@ -1148,17 +1383,15 @@ async function generateVisualizations() {
     }
 }
 
-// ============ TAB SWITCHING ============
+// ============================================================
+//  TAB SWITCHING
+// ============================================================
 function switchTab(tab) {
-    // Update tab buttons
     document.getElementById('tabChat').classList.toggle('active', tab === 'chat');
     document.getElementById('tabPredictions').classList.toggle('active', tab === 'predictions');
-
-    // Update tab content
     document.getElementById('chatTab').classList.toggle('active', tab === 'chat');
     document.getElementById('predictionsTab').classList.toggle('active', tab === 'predictions');
 
-    // Auto-load predictions on first visit if data is available
     if (tab === 'predictions' && !window._predictionsLoaded) {
         const totalRecords = document.getElementById('totalRecords');
         if (totalRecords && parseInt(totalRecords.textContent) > 0) {
@@ -1167,7 +1400,9 @@ function switchTab(tab) {
     }
 }
 
-// ============ PREDICTIONS ============
+// ============================================================
+//  PREDICTIONS (multi-user)
+// ============================================================
 let _predictionsCache = null;
 
 async function loadPredictions() {
@@ -1176,7 +1411,6 @@ async function loadPredictions() {
     const contentEl = document.getElementById('predictionsContent');
     const refreshBtn = document.getElementById('refreshPredictionsBtn');
 
-    // Show loading
     loadingEl.style.display = 'flex';
     emptyEl.style.display = 'none';
     contentEl.style.display = 'none';
@@ -1184,7 +1418,11 @@ async function loadPredictions() {
     refreshBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Generating...';
 
     try {
-        const response = await fetch(`${API_BASE_URL}/predictions`);
+        let url = `${API_BASE_URL}/predictions`;
+        if (currentUsername && currentDatasetId) {
+            url += `?username=${encodeURIComponent(currentUsername)}&dataset_id=${encodeURIComponent(currentDatasetId)}`;
+        }
+        const response = await fetch(url);
         const result = await response.json();
 
         if (!response.ok || !result.available) {
@@ -1209,7 +1447,6 @@ async function loadPredictions() {
         loadingEl.style.display = 'none';
         contentEl.style.display = 'block';
 
-        // Show PDF download button
         const pdfBtn = document.getElementById('downloadPdfBtn');
         if (pdfBtn) pdfBtn.style.display = 'flex';
 
@@ -1295,14 +1532,9 @@ function buildBadges(item) {
     return html;
 }
 
-function escapeHTML(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-// ============ PDF DOWNLOAD ============
+// ============================================================
+//  PDF DOWNLOAD
+// ============================================================
 function downloadPredictionsPDF() {
     const content = document.getElementById('predictionsContent');
     if (!content || content.children.length === 0) {
@@ -1314,21 +1546,18 @@ function downloadPredictionsPDF() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
 
-    // Create a clean clone for PDF rendering
     const pdfContainer = document.createElement('div');
     pdfContainer.style.cssText = 'padding: 30px; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; color: #2d3748; background: white;';
 
-    // Title
     const title = document.createElement('div');
     title.innerHTML = `
         <div style="text-align:center; margin-bottom:24px; padding-bottom:16px; border-bottom:2px solid #4a6cf7;">
             <h1 style="font-size:22px; color:#2d3748; margin:0 0 6px 0;">Sales Predictions & Insights</h1>
-            <p style="font-size:12px; color:#718096; margin:0;">Generated on ${new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })} • Simple Sales Analytics</p>
+            <p style="font-size:12px; color:#718096; margin:0;">Generated on ${new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })} &bull; AI Sales Analytics &bull; ${currentUsername}</p>
         </div>
     `;
     pdfContainer.appendChild(title);
 
-    // Render each section
     const sectionColors = {
         'forecast': '#4a6cf7',
         'products': '#48bb78',
@@ -1341,7 +1570,6 @@ function downloadPredictionsPDF() {
         const sectionClone = document.createElement('div');
         sectionClone.style.cssText = 'margin-bottom:20px; page-break-inside:avoid;';
 
-        // Section title
         const titleEl = section.querySelector('.pred-section-title');
         const cssClass = Array.from(section.classList).find(c => c !== 'pred-section') || 'forecast';
         const color = sectionColors[cssClass] || '#4a6cf7';
@@ -1351,25 +1579,23 @@ function downloadPredictionsPDF() {
         sectionTitle.textContent = titleEl ? titleEl.textContent.trim() : 'Section';
         sectionClone.appendChild(sectionTitle);
 
-        // Items
         section.querySelectorAll('.pred-item').forEach(item => {
             const itemDiv = document.createElement('div');
             itemDiv.style.cssText = `background:#f8fafc; border-left:3px solid ${color}; border-radius:6px; padding:10px 14px; margin-bottom:8px;`;
 
-            const label = item.querySelector('.pred-item-label')?.textContent || '';
+            const labelText = item.querySelector('.pred-item-label')?.textContent || '';
             const value = item.querySelector('.pred-item-value')?.textContent || '';
             const detail = item.querySelector('.pred-item-detail')?.textContent || '';
 
-            // Badges
             const badges = [];
             item.querySelectorAll('.pred-badge').forEach(b => badges.push(b.textContent.trim()));
             const badgeText = badges.length > 0
-                ? `<div style="margin-top:6px;font-size:10px;color:#718096;">${badges.join(' • ')}</div>`
+                ? `<div style="margin-top:6px;font-size:10px;color:#718096;">${badges.join(' &bull; ')}</div>`
                 : '';
 
             itemDiv.innerHTML = `
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
-                    <span style="font-size:13px;font-weight:600;color:#2d3748;">${escapeHTML(label)}</span>
+                    <span style="font-size:13px;font-weight:600;color:#2d3748;">${escapeHTML(labelText)}</span>
                     ${value ? `<span style="font-size:13px;font-weight:700;color:${color};white-space:nowrap;">${escapeHTML(value)}</span>` : ''}
                 </div>
                 <div style="font-size:12px;color:#4a5568;line-height:1.5;">${escapeHTML(detail)}</div>
@@ -1381,12 +1607,10 @@ function downloadPredictionsPDF() {
         pdfContainer.appendChild(sectionClone);
     });
 
-    // Footer
     const footer = document.createElement('div');
-    footer.innerHTML = `<div style="text-align:center;font-size:10px;color:#a0aec0;margin-top:20px;padding-top:10px;border-top:1px solid #e2e8f0;">© Team Abscond 2026 • Simple Sales Analytics Agent</div>`;
+    footer.innerHTML = `<div style="text-align:center;font-size:10px;color:#a0aec0;margin-top:20px;padding-top:10px;border-top:1px solid #e2e8f0;">&copy; Team Abscond 2026 &bull; AI Sales Analytics</div>`;
     pdfContainer.appendChild(footer);
 
-    // Generate PDF
     const opt = {
         margin: [10, 10, 10, 10],
         filename: `Sales_Predictions_${new Date().toISOString().slice(0, 10)}.pdf`,

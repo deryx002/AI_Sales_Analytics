@@ -163,6 +163,25 @@ a {
     align-items: center;
 }
 
+.nav-login-btn {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--accent);
+    padding: 8px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: transform 0.3s var(--ease-spring), 
+                box-shadow 0.3s var(--ease-smooth),
+                background 0.3s var(--ease-smooth);
+}
+
+.nav-login-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px var(--accent-glow);
+    background: var(--accent-light);
+}
+
 .nav-btn-secondary {
     font-size: 14px;
     font-weight: 500;
@@ -399,6 +418,30 @@ a {
     margin-bottom: 56px;
     opacity: 0;
     transform: translateY(20px);
+}
+
+.btn-primary-hero {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 14px 28px;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.4s var(--ease-spring),
+                box-shadow 0.4s var(--ease-smooth),
+                background 0.3s;
+}
+
+.btn-primary-hero:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 40px var(--accent-glow), 0 0 0 1px var(--accent);
+    background: var(--accent-light);
 }
 
 .btn-primary {

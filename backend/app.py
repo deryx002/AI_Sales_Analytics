@@ -1125,6 +1125,42 @@ def execute_intent(intent, df):
 
     numeric_cols = df.select_dtypes(include='number').columns.tolist()
 
+    # ── Helpers for smart formatting ───────────────────────────────────
+    _CURRENCY_CANONICALS = {'revenue', 'price', 'total', 'amount', 'cost',
+                            'income', 'sales', 'gross', 'net', 'profit'}
+    _SKIP_SUM_PATTERNS = {'id', 'rating', 'tax', 'discount', 'zip', 'pin',
+                          'code', 'phone', 'mobile', 'year', 'month', 'day'}
+
+    def _is_currency_col(col):
+        """Return True if the column semantically represents money."""
+        canon = get_canonical_name(col)
+        key = normalize_column_key(col)
+        orig = normalize_column_key(_original_column_map.get(col, col))
+        for term in _CURRENCY_CANONICALS:
+            if term in canon or term in key or term in orig:
+                return True
+        return False
+
+    def _should_skip_sum(col):
+        """Return True if summing this column produces nonsense."""
+        key = normalize_column_key(col)
+        orig = normalize_column_key(_original_column_map.get(col, col))
+        for bad in _SKIP_SUM_PATTERNS:
+            if bad in key or bad in orig:
+                return True
+        return False
+
+    def _fmt_value(col, value):
+        """Format a numeric value with ₹ only when appropriate."""
+        if _is_currency_col(col):
+            return f"₹{value:,.2f}"
+        if isinstance(value, float) and value == int(value):
+            return f"{int(value):,}"
+        return f"{value:,.2f}"
+
+    def _col_label(col):
+        return _original_column_map.get(col, col)
+
     try:
         if itype == 'category_filter':
             col = intent['column']
@@ -1135,19 +1171,18 @@ def execute_intent(intent, df):
             counts = subset.value_counts()
             if counts.empty:
                 return None, None
-            original_fcol = _original_column_map.get(fcol, fcol)
-            original_col = _original_column_map.get(col, col)
-            lines = [f"**{original_col} distribution where {original_fcol} = {fval.title()}:**\n"]
+            lines = [f"**{_col_label(col)} distribution where {_col_label(fcol)} = {fval.title()}:**\n"]
             data_rows = []
             for val, cnt in counts.items():
                 lines.append(f"- {val}: {cnt}")
                 data_rows.append({col: val, 'count': int(cnt)})
-            # Also add numeric totals for this filter if available
+            # Add relevant numeric summaries (skip IDs, ratings, etc.)
             for ncol in numeric_cols:
-                if ncol != col:
-                    total = df.loc[mask, ncol].sum()
-                    if total > 0:
-                        lines.append(f"\nTotal {_original_column_map.get(ncol, ncol)}: ₹{total:,.2f}")
+                if ncol == col or _should_skip_sum(ncol):
+                    continue
+                total = df.loc[mask, ncol].sum()
+                if total > 0:
+                    lines.append(f"\nTotal {_col_label(ncol)}: {_fmt_value(ncol, total)}")
             return '\n'.join(lines), {'intent': intent, 'results': data_rows}
 
         elif itype == 'numeric_filter':
@@ -1158,8 +1193,6 @@ def execute_intent(intent, df):
             series = pd.to_numeric(df.loc[mask, col], errors='coerce').dropna()
             if series.empty:
                 return None, None
-            original_fcol = _original_column_map.get(fcol, fcol)
-            original_col = _original_column_map.get(col, col)
             stats = {
                 'total': round(float(series.sum()), 2),
                 'average': round(float(series.mean()), 2),
@@ -1168,11 +1201,11 @@ def execute_intent(intent, df):
                 'count': int(series.count()),
             }
             lines = [
-                f"**{original_col} for {original_fcol} = {fval.title()}:**\n",
-                f"- Total: ₹{stats['total']:,.2f}",
-                f"- Average: ₹{stats['average']:,.2f}",
-                f"- Max: ₹{stats['max']:,.2f}",
-                f"- Min: ₹{stats['min']:,.2f}",
+                f"**{_col_label(col)} for {_col_label(fcol)} = {fval.title()}:**\n",
+                f"- Total: {_fmt_value(col, stats['total'])}",
+                f"- Average: {_fmt_value(col, stats['average'])}",
+                f"- Max: {_fmt_value(col, stats['max'])}",
+                f"- Min: {_fmt_value(col, stats['min'])}",
                 f"- Count: {stats['count']}",
             ]
             return '\n'.join(lines), {'intent': intent, 'results': stats}
@@ -1182,12 +1215,13 @@ def execute_intent(intent, df):
             grp = intent['group_by']
             grouped = df.groupby(grp)[col].agg(['sum', 'mean', 'count']).round(2)
             grouped = grouped.sort_values('sum', ascending=False)
-            original_col = _original_column_map.get(col, col)
-            original_grp = _original_column_map.get(grp, grp)
-            lines = [f"**{original_col} by {original_grp}:**\n"]
+            is_curr = _is_currency_col(col)
+            lines = [f"**{_col_label(col)} by {_col_label(grp)}:**\n"]
             data_rows = []
             for idx, row in grouped.iterrows():
-                lines.append(f"- {idx}: Total=₹{row['sum']:,.2f}, Avg=₹{row['mean']:,.2f}, Count={int(row['count'])}")
+                total_str = _fmt_value(col, row['sum'])
+                avg_str = _fmt_value(col, row['mean'])
+                lines.append(f"- {idx}: Total={total_str}, Avg={avg_str}, Count={int(row['count'])}")
                 data_rows.append({grp: idx, 'total': row['sum'], 'average': row['mean'], 'count': int(row['count'])})
             return '\n'.join(lines), {'intent': intent, 'results': data_rows}
 
@@ -1196,20 +1230,20 @@ def execute_intent(intent, df):
             col_b = intent['column_b']
             cross = df.groupby([col_a, col_b]).size().reset_index(name='count')
             cross = cross.sort_values('count', ascending=False)
-            original_a = _original_column_map.get(col_a, col_a)
-            original_b = _original_column_map.get(col_b, col_b)
-            lines = [f"**{original_a} × {original_b} distribution:**\n"]
+            lines = [f"**{_col_label(col_a)} × {_col_label(col_b)} distribution:**\n"]
             data_rows = []
             for _, row in cross.iterrows():
                 lines.append(f"- {row[col_a]} + {row[col_b]}: {int(row['count'])}")
                 data_rows.append({col_a: row[col_a], col_b: row[col_b], 'count': int(row['count'])})
-            # Add numeric totals per cross-group if available
+            # Add relevant numeric totals per cross-group
             for ncol in numeric_cols:
+                if _should_skip_sum(ncol):
+                    continue
                 num_cross = df.groupby([col_a, col_b])[ncol].sum().round(2)
                 if num_cross.sum() > 0:
-                    lines.append(f"\n{_original_column_map.get(ncol, ncol)} totals:")
+                    lines.append(f"\n{_col_label(ncol)} totals:")
                     for (va, vb), total in num_cross.items():
-                        lines.append(f"  {va} + {vb}: ₹{total:,.2f}")
+                        lines.append(f"  {va} + {vb}: {_fmt_value(ncol, total)}")
             return '\n'.join(lines), {'intent': intent, 'results': data_rows}
 
     except Exception as e:

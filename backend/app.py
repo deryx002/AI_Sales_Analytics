@@ -781,6 +781,22 @@ def compute_all_aggregations(df):
             )
             result['breakdowns'][cat][num] = grouped.to_dict(orient='index')
 
+    # ── Cross-category aggregations (categorical × categorical) ─────────
+    result['category_cross'] = {}
+    valid_cats = [c for c in categorical_cols if 2 <= df[c].nunique() <= 100]
+    for i, cat_a in enumerate(valid_cats):
+        for cat_b in valid_cats[i + 1:]:
+            cross_size = df[cat_a].nunique() * df[cat_b].nunique()
+            if cross_size > 500:
+                continue
+            cross_key = f"{cat_a}__{cat_b}"
+            cross = df.groupby([cat_a, cat_b]).size().reset_index(name='count')
+            # Also add numeric sums for each cross-group
+            for num in numeric_cols:
+                cross[num] = df.groupby([cat_a, cat_b])[num].sum().values
+                cross[num] = cross[num].round(2)
+            result['category_cross'][cross_key] = cross.to_dict(orient='records')
+
     # Date-based monthly breakdown
     date_col = next((c for c in df.columns if get_canonical_name(c) == 'date'), None)
     if date_col:
@@ -820,6 +836,15 @@ def build_query_context(computed):
                         f"    {group}: total={stats['sum']:,}  avg={stats['mean']:,}  count={stats['count']}"
                     )
 
+    if computed.get('category_cross'):
+        lines.append("\n--- CROSS-CATEGORY BREAKDOWNS (exact) ---")
+        for cross_key, rows in computed['category_cross'].items():
+            cat_a, cat_b = cross_key.split('__', 1)
+            lines.append(f"\n  '{cat_a}' × '{cat_b}':")
+            for row in rows[:80]:
+                parts = [f"{k}={v}" for k, v in row.items()]
+                lines.append(f"    {', '.join(parts)}")
+
     if computed.get('by_month'):
         lines.append("\n--- MONTHLY TRENDS (exact) ---")
         for col, monthly in computed['by_month'].items():
@@ -828,6 +853,368 @@ def build_query_context(computed):
                 lines.append(f"    {month}: {val:,}")
 
     return '\n'.join(lines)
+
+
+# ============================================================
+#  SEMANTIC COLUMN MATCHING
+# ============================================================
+
+# Extended synonym map: user term → list of canonical column names it could mean
+_QUERY_SYNONYMS = {
+    'sales': ['revenue', 'price', 'quantity'],
+    'revenue': ['revenue'],
+    'income': ['revenue'],
+    'turnover': ['revenue'],
+    'earnings': ['revenue'],
+    'amount': ['revenue', 'price'],
+    'money': ['revenue', 'price'],
+    'total': ['revenue'],
+    'city': ['region'],
+    'location': ['region'],
+    'area': ['region'],
+    'place': ['region'],
+    'state': ['region'],
+    'branch': ['region'],
+    'zone': ['region'],
+    'territory': ['region'],
+    'items': ['product'],
+    'goods': ['product'],
+    'product': ['product'],
+    'products': ['product'],
+    'sku': ['product'],
+    'model': ['product'],
+    'category': ['product'],
+    'payment': ['payment'],
+    'pay': ['payment'],
+    'payment_method': ['payment'],
+    'transaction': ['payment'],
+    'mode': ['payment'],
+    'customer': ['customer'],
+    'client': ['customer'],
+    'buyer': ['customer'],
+    'account': ['customer'],
+    'date': ['date'],
+    'time': ['date'],
+    'period': ['date'],
+    'month': ['date'],
+    'when': ['date'],
+    'quantity': ['quantity'],
+    'qty': ['quantity'],
+    'units': ['quantity'],
+    'volume': ['quantity'],
+    'sold': ['quantity', 'revenue'],
+    'price': ['price'],
+    'cost': ['price'],
+    'rate': ['price'],
+    'mrp': ['price'],
+    'stage': ['pipeline_stage'],
+    'pipeline': ['pipeline_stage'],
+    'status': ['pipeline_stage'],
+    'deal': ['pipeline_stage'],
+    'region': ['region'],
+    'regions': ['region'],
+}
+
+
+def _match_query_term_to_column(term, df_columns):
+    """Match a single query term to the best actual DataFrame column.
+
+    Priority:
+      1. Exact canonical match via COLUMN_ALIASES
+      2. Synonym lookup via _QUERY_SYNONYMS
+      3. Fuzzy string matching via difflib
+    Returns the actual df column name or None.
+    """
+    import difflib
+    term_lower = term.strip().lower().replace(' ', '_')
+    col_canonicals = {col: get_canonical_name(col) for col in df_columns}
+
+    # 1. Direct canonical check — "revenue" in query, "revenue" column exists
+    for col, canon in col_canonicals.items():
+        if term_lower == canon or term_lower == col.lower():
+            return col
+
+    # 2. Synonym lookup
+    synonyms = _QUERY_SYNONYMS.get(term_lower, [])
+    for syn_canon in synonyms:
+        for col, canon in col_canonicals.items():
+            if canon == syn_canon:
+                return col
+
+    # 3. Check COLUMN_ALIASES directly
+    for canonical, aliases in COLUMN_ALIASES.items():
+        if term_lower in aliases or term_lower == canonical:
+            for col, canon in col_canonicals.items():
+                if canon == canonical:
+                    return col
+
+    # 4. Fuzzy match against column names + aliases
+    all_targets = {}
+    for col in df_columns:
+        all_targets[col.lower()] = col
+        canon = col_canonicals[col]
+        all_targets[canon] = col
+        for canonical, aliases in COLUMN_ALIASES.items():
+            if canon == canonical:
+                for alias in aliases:
+                    all_targets[alias] = col
+
+    matches = difflib.get_close_matches(term_lower, all_targets.keys(), n=1, cutoff=0.6)
+    if matches:
+        return all_targets[matches[0]]
+
+    return None
+
+
+def semantic_column_match(query_text, df_columns):
+    """Map all meaningful words in a user query to actual DataFrame columns.
+
+    Returns dict: {matched_term: actual_column_name}
+    """
+    import re as _re
+    stop_words = {
+        'in', 'by', 'of', 'the', 'a', 'an', 'for', 'and', 'or', 'vs',
+        'with', 'from', 'to', 'is', 'are', 'was', 'were', 'what', 'which',
+        'how', 'many', 'much', 'show', 'tell', 'me', 'give', 'list', 'get',
+        'find', 'display', 'per', 'each', 'all', 'between', 'on', 'at',
+        'distribution', 'breakdown', 'analysis', 'report', 'data', 'total',
+        'count', 'number', 'average', 'sum', 'max', 'min', 'top', 'bottom',
+        'highest', 'lowest', 'most', 'least',
+    }
+    tokens = _re.findall(r'[a-z_]+', query_text.lower())
+    matched = {}
+    for token in tokens:
+        if token in stop_words:
+            continue
+        col = _match_query_term_to_column(token, df_columns)
+        if col and col not in matched.values():
+            matched[token] = col
+    return matched
+
+
+# ============================================================
+#  QUERY INTENT DETECTION & DIRECT EXECUTION
+# ============================================================
+
+def detect_query_intent(query, df):
+    """Detect simple query intents that can be answered directly from pandas.
+
+    Returns a dict with 'type' and relevant keys, or None if the query
+    should be forwarded to Gemini.
+    """
+    import re as _re
+    q = query.strip().lower()
+    columns = list(df.columns)
+    col_match = semantic_column_match(q, columns)
+
+    if len(col_match) < 1:
+        return None
+
+    matched_cols = list(col_match.values())
+    matched_terms = list(col_match.keys())
+
+    numeric_cols = df.select_dtypes(include='number').columns.tolist()
+    categorical_cols = [c for c in columns if c not in numeric_cols
+                        and not c.startswith('_')]
+
+    # Detect filter values: words in the query that match actual category values
+    def find_filter_value(col):
+        unique_vals = df[col].dropna().astype(str).str.lower().unique()
+        tokens = _re.findall(r'[a-z0-9_]+', q)
+        for token in tokens:
+            for val in unique_vals:
+                if token == val.lower() or token in val.lower().split():
+                    return val
+        # Try multi-word match
+        for val in unique_vals:
+            if val.lower() in q:
+                return val
+        return None
+
+    # ── Pattern 1: "<column> in <value>" → category filter
+    # e.g., "payment in coimbatore", "products in chennai"
+    for col in matched_cols:
+        if col in categorical_cols:
+            for other_col in categorical_cols:
+                if other_col != col:
+                    fv = find_filter_value(other_col)
+                    if fv:
+                        return {
+                            'type': 'category_filter',
+                            'column': col,
+                            'filter_column': other_col,
+                            'filter_value': fv,
+                        }
+
+    # ── Pattern 2: "<numeric> in/by <category_value>" → numeric for a filter
+    # e.g., "sales in coimbatore", "revenue in chennai"
+    for col in matched_cols:
+        if col in numeric_cols:
+            for cat in categorical_cols:
+                fv = find_filter_value(cat)
+                if fv:
+                    return {
+                        'type': 'numeric_filter',
+                        'column': col,
+                        'filter_column': cat,
+                        'filter_value': fv,
+                    }
+
+    # ── Pattern 3: "<numeric> by <category>" → grouped aggregation
+    # e.g., "revenue by region", "quantity by product"
+    by_patterns = ['by', 'per', 'for each', 'grouped by', 'across']
+    has_by = any(p in q for p in by_patterns)
+    if has_by and len(matched_cols) >= 2:
+        num_found = [c for c in matched_cols if c in numeric_cols]
+        cat_found = [c for c in matched_cols if c in categorical_cols]
+        if num_found and cat_found:
+            return {
+                'type': 'grouped_aggregation',
+                'column': num_found[0],
+                'group_by': cat_found[0],
+            }
+
+    # ── Pattern 4: "<category> vs <category>" → cross-category
+    # e.g., "region vs payment", "product by payment"
+    vs_patterns = ['vs', 'versus', 'against', 'compared to']
+    has_vs = any(p in q for p in vs_patterns)
+    if has_vs or has_by:
+        cat_found = [c for c in matched_cols if c in categorical_cols]
+        if len(cat_found) >= 2:
+            return {
+                'type': 'cross_category',
+                'column_a': cat_found[0],
+                'column_b': cat_found[1],
+            }
+
+    # ── Pattern 5: Single categorical column mentioned with a filter value
+    # e.g., just "coimbatore" or "payment coimbatore"
+    for cat in categorical_cols:
+        fv = find_filter_value(cat)
+        if fv:
+            # Find something to report about that value
+            target_col = None
+            for col in matched_cols:
+                if col != cat:
+                    target_col = col
+                    break
+            if target_col:
+                if target_col in numeric_cols:
+                    return {
+                        'type': 'numeric_filter',
+                        'column': target_col,
+                        'filter_column': cat,
+                        'filter_value': fv,
+                    }
+                else:
+                    return {
+                        'type': 'category_filter',
+                        'column': target_col,
+                        'filter_column': cat,
+                        'filter_value': fv,
+                    }
+
+    return None
+
+
+def execute_intent(intent, df):
+    """Execute a detected intent directly using pandas. Returns a formatted
+    response string and a structured data dict, or (None, None) on failure."""
+    import re as _re
+    itype = intent['type']
+
+    numeric_cols = df.select_dtypes(include='number').columns.tolist()
+
+    try:
+        if itype == 'category_filter':
+            col = intent['column']
+            fcol = intent['filter_column']
+            fval = intent['filter_value']
+            mask = df[fcol].astype(str).str.lower() == fval.lower()
+            subset = df.loc[mask, col]
+            counts = subset.value_counts()
+            if counts.empty:
+                return None, None
+            original_fcol = _original_column_map.get(fcol, fcol)
+            original_col = _original_column_map.get(col, col)
+            lines = [f"**{original_col} distribution where {original_fcol} = {fval.title()}:**\n"]
+            data_rows = []
+            for val, cnt in counts.items():
+                lines.append(f"- {val}: {cnt}")
+                data_rows.append({col: val, 'count': int(cnt)})
+            # Also add numeric totals for this filter if available
+            for ncol in numeric_cols:
+                if ncol != col:
+                    total = df.loc[mask, ncol].sum()
+                    if total > 0:
+                        lines.append(f"\nTotal {_original_column_map.get(ncol, ncol)}: ₹{total:,.2f}")
+            return '\n'.join(lines), {'intent': intent, 'results': data_rows}
+
+        elif itype == 'numeric_filter':
+            col = intent['column']
+            fcol = intent['filter_column']
+            fval = intent['filter_value']
+            mask = df[fcol].astype(str).str.lower() == fval.lower()
+            series = pd.to_numeric(df.loc[mask, col], errors='coerce').dropna()
+            if series.empty:
+                return None, None
+            original_fcol = _original_column_map.get(fcol, fcol)
+            original_col = _original_column_map.get(col, col)
+            stats = {
+                'total': round(float(series.sum()), 2),
+                'average': round(float(series.mean()), 2),
+                'max': round(float(series.max()), 2),
+                'min': round(float(series.min()), 2),
+                'count': int(series.count()),
+            }
+            lines = [
+                f"**{original_col} for {original_fcol} = {fval.title()}:**\n",
+                f"- Total: ₹{stats['total']:,.2f}",
+                f"- Average: ₹{stats['average']:,.2f}",
+                f"- Max: ₹{stats['max']:,.2f}",
+                f"- Min: ₹{stats['min']:,.2f}",
+                f"- Count: {stats['count']}",
+            ]
+            return '\n'.join(lines), {'intent': intent, 'results': stats}
+
+        elif itype == 'grouped_aggregation':
+            col = intent['column']
+            grp = intent['group_by']
+            grouped = df.groupby(grp)[col].agg(['sum', 'mean', 'count']).round(2)
+            grouped = grouped.sort_values('sum', ascending=False)
+            original_col = _original_column_map.get(col, col)
+            original_grp = _original_column_map.get(grp, grp)
+            lines = [f"**{original_col} by {original_grp}:**\n"]
+            data_rows = []
+            for idx, row in grouped.iterrows():
+                lines.append(f"- {idx}: Total=₹{row['sum']:,.2f}, Avg=₹{row['mean']:,.2f}, Count={int(row['count'])}")
+                data_rows.append({grp: idx, 'total': row['sum'], 'average': row['mean'], 'count': int(row['count'])})
+            return '\n'.join(lines), {'intent': intent, 'results': data_rows}
+
+        elif itype == 'cross_category':
+            col_a = intent['column_a']
+            col_b = intent['column_b']
+            cross = df.groupby([col_a, col_b]).size().reset_index(name='count')
+            cross = cross.sort_values('count', ascending=False)
+            original_a = _original_column_map.get(col_a, col_a)
+            original_b = _original_column_map.get(col_b, col_b)
+            lines = [f"**{original_a} × {original_b} distribution:**\n"]
+            data_rows = []
+            for _, row in cross.iterrows():
+                lines.append(f"- {row[col_a]} + {row[col_b]}: {int(row['count'])}")
+                data_rows.append({col_a: row[col_a], col_b: row[col_b], 'count': int(row['count'])})
+            # Add numeric totals per cross-group if available
+            for ncol in numeric_cols:
+                num_cross = df.groupby([col_a, col_b])[ncol].sum().round(2)
+                if num_cross.sum() > 0:
+                    lines.append(f"\n{_original_column_map.get(ncol, ncol)} totals:")
+                    for (va, vb), total in num_cross.items():
+                        lines.append(f"  {va} + {vb}: ₹{total:,.2f}")
+            return '\n'.join(lines), {'intent': intent, 'results': data_rows}
+
+    except Exception as e:
+        print(f"Intent execution error: {e}")
+    return None, None
 
 
 # ============================================================
@@ -869,11 +1256,20 @@ def handle_query():
         # ── 2. Compute ALL aggregations in Python (exact math) ─────────────
         computed = compute_all_aggregations(df)
 
-        # ── 3. Build compact structured context for AI ─────────────────────
-        context = build_query_context(computed)
+        # ── 3. Try direct pandas answer via intent detection ───────────────
+        ai_response = None
+        intent = detect_query_intent(raw_query, df)
+        if intent:
+            direct_answer, intent_data = execute_intent(intent, df)
+            if direct_answer:
+                ai_response = direct_answer
+                print(f"Intent hit: {intent['type']} — skipped Gemini call")
 
-        # ── 4. AI only interprets pre-computed results, never calculates ───
-        prompt = f"""You are a Sales Analytics Agent. A user has asked a question about their sales data.
+        # ── 4. Fallback to Gemini for complex queries ──────────────────────
+        if ai_response is None:
+            context = build_query_context(computed)
+
+            prompt = f"""You are a Sales Analytics Agent. A user has asked a question about their sales data.
 
 ALL NUMBERS BELOW HAVE BEEN CALCULATED BY PYTHON — they are 100% accurate.
 Your ONLY job is to:
@@ -899,7 +1295,7 @@ STRICT RULES:
 
 YOUR ANSWER:"""
 
-        ai_response = call_gemini(prompt, dataset_id=dataset_id, query=raw_query)
+            ai_response = call_gemini(prompt, dataset_id=dataset_id, query=raw_query)
 
         # ── 5. Visualizations ──────────────────────────────────────────────
         visualization_keywords = ['chart', 'graph', 'plot', 'visualize', 'diagram',

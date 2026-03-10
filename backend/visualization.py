@@ -81,12 +81,12 @@ class SalesVisualizer:
             
             ax.set_title('Revenue Trend Over Time', fontsize=16, fontweight='bold')
             ax.set_xlabel('Date', fontsize=12)
-            ax.set_ylabel('Revenue ($)', fontsize=12)
+            ax.set_ylabel('Revenue (₹)', fontsize=12)
             ax.grid(True, alpha=0.3)
             ax.tick_params(axis='x', rotation=45)
             
             # Format y-axis as currency
-            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'₹{x:,.0f}'))
             
             plt.tight_layout()
             
@@ -137,16 +137,16 @@ class SalesVisualizer:
             for bar in bars:
                 height = bar.get_height()
                 ax.text(bar.get_x() + bar.get_width()/2., height,
-                        f'${height:,.0f}',
+                        f'₹{height:,.0f}',
                         ha='center', va='bottom', fontsize=10)
             
             ax.set_title('Sales by Region', fontsize=16, fontweight='bold')
             ax.set_xlabel('Region', fontsize=12)
-            ax.set_ylabel('Total Revenue ($)', fontsize=12)
+            ax.set_ylabel('Total Revenue (₹)', fontsize=12)
             ax.tick_params(axis='x', rotation=45)
             
             # Format y-axis as currency
-            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'₹{x:,.0f}'))
             
             plt.tight_layout()
             
@@ -248,15 +248,15 @@ class SalesVisualizer:
             mean_val = np.mean(revenues)
             median_val = np.median(revenues)
             
-            ax.axvline(mean_val, color='red', linestyle='--', linewidth=2, label=f'Mean: ${mean_val:,.0f}')
-            ax.axvline(median_val, color='green', linestyle='--', linewidth=2, label=f'Median: ${median_val:,.0f}')
+            ax.axvline(mean_val, color='red', linestyle='--', linewidth=2, label=f'Mean: ₹{mean_val:,.0f}')
+            ax.axvline(median_val, color='green', linestyle='--', linewidth=2, label=f'Median: ₹{median_val:,.0f}')
             
             ax.set_title('Sales Distribution', fontsize=16, fontweight='bold')
-            ax.set_xlabel('Revenue ($)', fontsize=12)
+            ax.set_xlabel('Revenue (₹)', fontsize=12)
             ax.set_ylabel('Frequency', fontsize=12)
             
             # Format x-axis as currency
-            ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+            ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'₹{x:,.0f}'))
             
             ax.legend()
             plt.tight_layout()
@@ -310,16 +310,16 @@ class SalesVisualizer:
             for bar in bars:
                 height = bar.get_height()
                 ax.text(bar.get_x() + bar.get_width()/2., height,
-                        f'${height:,.0f}',
+                        f'₹{height:,.0f}',
                         ha='center', va='bottom', fontsize=9, rotation=90)
             
             ax.set_title('Monthly Revenue Trend', fontsize=16, fontweight='bold')
             ax.set_xlabel('Month', fontsize=12)
-            ax.set_ylabel('Total Revenue ($)', fontsize=12)
+            ax.set_ylabel('Total Revenue (₹)', fontsize=12)
             ax.tick_params(axis='x', rotation=45)
             
             # Format y-axis as currency
-            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'₹{x:,.0f}'))
             
             plt.tight_layout()
             

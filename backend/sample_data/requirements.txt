@@ -1,0 +1,13 @@
+flask==2.3.3
+flask-cors==4.0.0
+google-genai==0.1.0
+python-dotenv==1.0.0
+pandas==2.0.3
+numpy==1.24.3
+openpyxl==3.1.2
+matplotlib==3.7.2
+seaborn==0.12.2
+Pillow==10.0.0
+gunicorn==21.2.0
+pymongo==4.6.0
+bcrypt==4.0.1

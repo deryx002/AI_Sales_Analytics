@@ -8,128 +8,207 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <div class="logo">
+    <div class="app-layout">
+
+        <!-- ===== LEFT SIDEBAR (full-height) ===== -->
+        <aside class="left-sidebar" id="leftSidebar">
+            <!-- Brand -->
+            <div class="sidebar-brand">
                 <i class="fas fa-chart-line"></i>
-                <h1>Simple Sales Analytics</h1>
+                <span>AI Sales Analytics</span>
             </div>
-            <div class="header-right">
-                <label class="switch" title="Toggle theme">
-                    <span class="sun"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="#ffd43b"><circle r="5" cy="12" cx="12"></circle><path d="m21 13h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm-17 0h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm13.66-5.66a1 1 0 0 1 -.66-.29 1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1 -.75.29zm-12.02 12.02a1 1 0 0 1 -.71-.29 1 1 0 0 1 0-1.41l.71-.66a1 1 0 0 1 1.41 1.41l-.71.71a1 1 0 0 1 -.7.24zm6.36-14.36a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm0 17a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm-5.66-14.66a1 1 0 0 1 -.7-.29l-.71-.71a1 1 0 0 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.29zm12.02 12.02a1 1 0 0 1 -.7-.29l-.66-.71a1 1 0 0 1 1.36-1.36l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.24z"></path></g></svg></span>
-                    <span class="moon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="m223.5 32c-123.5 0-223.5 100.3-223.5 224s100 224 223.5 224c60.6 0 115.5-24.2 155.8-63.4 5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6-96.9 0-175.5-78.8-175.5-176 0-65.8 36-123.1 89.3-153.3 6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"></path></svg></span>
-                    <input type="checkbox" class="input" id="themeToggle">
-                    <span class="slider"></span>
-                </label>
-                <div class="status" id="statusIndicator">
-                    <div class="loader-box" id="statusLoader">
-                        <div class="loading-wrapper">
-                            <div class="loader">
-                                <div class="loader-inner"></div>
+
+            <!-- New Chat Button -->
+            <div class="sidebar-new-chat">
+                <button class="btn-new-chat" onclick="startNewChat()">
+                    <i class="fas fa-plus"></i>
+                    <span>New Chat</span>
+                </button>
+            </div>
+
+            <!-- Sidebar Sections (scrollable) -->
+            <div class="sidebar-body">
+
+                <!-- Upload Data -->
+                <div class="sidebar-section">
+                    <div class="sidebar-section-header" onclick="toggleSidebarSection('uploadSection')" data-tooltip="Upload Data">
+                        <h3><i class="fas fa-upload"></i> Upload Data</h3>
+                        <i class="fas fa-chevron-down sidebar-toggle-icon" id="uploadSectionIcon"></i>
+                    </div>
+                    <div class="sidebar-section-body" id="uploadSection">
+                        <div class="upload-box-compact" id="uploadBox">
+                            <i class="fas fa-file-csv"></i>
+                            <p>Drop CSV/Excel here</p>
+                            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+                            <button class="btn btn-sm" onclick="document.getElementById('fileInput').click()">
+                                Browse Files
+                            </button>
+                        </div>
+                        <div class="file-info" id="fileInfo">No files selected</div>
+                        <button class="btn btn-primary btn-sm" onclick="uploadFile()" id="uploadBtn">
+                            <i class="fas fa-cloud-upload-alt"></i> Process Data
+                        </button>
+
+                        <!-- Sample Datasets -->
+                        <div class="sample-data-section" id="sampleDataSection">
+                            <h4><i class="fas fa-folder-open"></i> Sample Datasets</h4>
+                            <div class="sample-list" id="sampleList">
+                                <p class="sample-loading">Loading...</p>
                             </div>
                         </div>
                     </div>
-                    <span class="status-dot" id="statusDot" style="display:none;"></span>
-                    <span id="statusText">Initializing Backend</span>
                 </div>
-            </div>
-        </header>
 
-        <section class="insights-strip" id="salesInsightsSection" style="display: none;">
-            <div class="insight-card">
-                <div class="insight-title">Most Sold Product</div>
-                <div class="insight-value" id="mostSoldProduct">-</div>
-                <div class="insight-meta" id="mostSoldMeta">-</div>
-                <div class="insight-trend-wrap">
-                    <canvas id="mostProductTrendChart" class="insight-trend-chart"></canvas>
-                </div>
-            </div>
-            <div class="insight-card">
-                <div class="insight-title">Least Sold Product</div>
-                <div class="insight-value" id="leastSoldProduct">-</div>
-                <div class="insight-meta" id="leastSoldMeta">-</div>
-                <div class="insight-trend-wrap">
-                    <canvas id="leastProductTrendChart" class="insight-trend-chart"></canvas>
-                </div>
-            </div>
-            <div class="insight-card">
-                <div class="insight-title">Predicted Top Future Product</div>
-                <div class="insight-value" id="futureTopProduct">-</div>
-                <div class="insight-meta" id="futureTopMeta">-</div>
-                <ul class="insight-reasons" id="futureTopReasons"></ul>
-            </div>
-        </section>
-
-        <div class="main-content">
-            <!-- Left Panel - Data Upload -->
-            <div class="left-panel">
-                <div class="card">
-                    <h2><i class="fas fa-upload"></i> Upload Data</h2>
-                    <div class="upload-box" id="uploadBox">
-                        <i class="fas fa-file-csv"></i>
-                        <p>Drop CSV or Excel files here</p>
-                        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
-                        <p id="fileInfo">No files Selected</p>
-                        <button class="btn" onclick="document.getElementById('fileInput').click()">
-                            Browse Files
-                        </button>
-                    </div>
-
-                    <!-- Sample Data Section -->
-                    <div class="sample-data-section" id="sampleDataSection">
-                        <h3><i class="fas fa-folder-open"></i> Sample Datasets</h3>
-                        <p class="sample-hint">Try with a sample file to explore features</p>
-                        <div class="sample-list" id="sampleList">
-                            <p class="sample-loading">Loading samples...</p>
-                        </div>
-                    </div>
-                    
-                    <div class="file-info" id="fileInfo">
-                        No files selected
-                    </div>
-                    
-                    <button class="btn btn-primary" onclick="uploadFile()" id="uploadBtn">
-                        <i class="fas fa-cloud-upload-alt"></i> Process Data
-                    </button>
-                    
-                    <div class="data-stats" id="dataStats">
+                <!-- Data Overview -->
+                <div class="sidebar-section">
+                    <div class="sidebar-section-header" onclick="toggleSidebarSection('statsSection')" data-tooltip="Data Overview">
                         <h3><i class="fas fa-database"></i> Data Overview</h3>
-                        <div class="stats-grid">
-                            <div class="stat">
+                        <i class="fas fa-chevron-down sidebar-toggle-icon" id="statsSectionIcon"></i>
+                    </div>
+                    <div class="sidebar-section-body" id="statsSection">
+                        <div class="stats-grid-compact">
+                            <div class="stat-compact">
                                 <div class="stat-value" id="totalRecords">0</div>
                                 <div class="stat-label" id="totalRecordsLabel">Records</div>
                             </div>
-                            <div class="stat">
+                            <div class="stat-compact">
                                 <div class="stat-value" id="totalRevenue">₹0</div>
                                 <div class="stat-label" id="totalRevenueLabel">Revenue</div>
                             </div>
-                            <div class="stat">
+                            <div class="stat-compact">
                                 <div class="stat-value" id="regionsCount">0</div>
                                 <div class="stat-label" id="regionsCountLabel">Regions</div>
                             </div>
-                            <div class="stat">
+                            <div class="stat-compact">
                                 <div class="stat-value" id="productsCount">0</div>
                                 <div class="stat-label" id="productsCountLabel">Products</div>
                             </div>
                         </div>
+                        <div class="sidebar-actions">
+                            <button class="btn btn-sm btn-danger" onclick="clearData()">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                        </div>
                     </div>
-                    
-                    <button class="btn btn-danger" onclick="clearData()">
-                        <i class="fas fa-trash"></i> Clear All Data
-                    </button>
+                </div>
 
-                    <!-- Add this button after the "Clear All Data" button -->
-                    <button class="btn btn-info" onclick="generateVisualizations()" id="visualizeBtn">
-                     <i class="fas fa-chart-bar"></i> Generate Charts
-                    </button>
-                    
+                <!-- Charts -->
+                <div class="sidebar-section">
+                    <div class="sidebar-section-header" onclick="handleCollapsedSidebarClick('charts')" data-tooltip="Charts">
+                        <h3><i class="fas fa-chart-bar"></i> Charts</h3>
+                        <i class="fas fa-chevron-right sidebar-toggle-icon"></i>
+                    </div>
+                </div>
+
+                <!-- Crash Reports -->
+                <div class="sidebar-section">
+                    <div class="sidebar-section-header" onclick="window.location.href='crashreports/crashreports.html'" data-tooltip="Crash Reports" style="cursor:pointer;">
+                        <h3><i class="fas fa-bug" style="color:#e53e3e;"></i> Crash Reports</h3>
+                        <i class="fas fa-chevron-right sidebar-toggle-icon"></i>
+                    </div>
+                </div>
+
+                <!-- Chat History -->
+                <div class="sidebar-section chat-history-section">
+                    <div class="sidebar-section-header" onclick="toggleSidebarSection('chatHistorySection')" data-tooltip="Chat History">
+                        <h3><i class="fas fa-history"></i> Chat History</h3>
+                        <i class="fas fa-chevron-down sidebar-toggle-icon" id="chatHistorySectionIcon"></i>
+                    </div>
+                    <div class="sidebar-section-body" id="chatHistorySection">
+                        <div class="chat-history-list" id="chatHistoryList">
+                            <div class="chat-history-empty">
+                                <i class="fas fa-comments"></i>
+                                <p>No previous chats</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Right Panel - Chat Interface -->
-            <div class="right-panel">
-                
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer">
+                <button class="btn-collapse-sidebar" id="collapseSidebarBtn" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
+                    <span class="collapse-icon-wrap">
+                        <i class="fas fa-angles-left"></i>
+                    </span>
+                    <span class="collapse-label">Collapse</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Mobile sidebar overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
+
+        <!-- ===== MAIN WORKSPACE ===== -->
+        <div class="main-workspace" id="mainWorkspace">
+
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <button class="btn-sidebar-toggle" id="sidebarToggleBtn" onclick="toggleMobileSidebar()" title="Toggle sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="status" id="statusIndicator">
+                        <div class="loader-box" id="statusLoader">
+                            <div class="loading-wrapper">
+                                <div class="loader">
+                                    <div class="loader-inner"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="status-dot" id="statusDot" style="display:none;"></span>
+                        <span id="statusText">Initializing Backend</span>
+                    </div>
+                </div>
+                <!-- Dataset selector hidden, managed via sidebar chat history -->
+                <select id="datasetSelector" style="display:none;" onchange="onDatasetChange()">
+                    <option value="">-- Upload a dataset --</option>
+                </select>
+                <div class="top-bar-right">
+                    <label class="switch" title="Toggle theme">
+                        <span class="sun"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="#ffd43b"><circle r="5" cy="12" cx="12"></circle><path d="m21 13h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm-17 0h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm13.66-5.66a1 1 0 0 1 -.66-.29 1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1 -.75.29zm-12.02 12.02a1 1 0 0 1 -.71-.29 1 1 0 0 1 0-1.41l.71-.66a1 1 0 0 1 1.41 1.41l-.71.71a1 1 0 0 1 -.7.24zm6.36-14.36a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm0 17a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm-5.66-14.66a1 1 0 0 1 -.7-.29l-.71-.71a1 1 0 0 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.29zm12.02 12.02a1 1 0 0 1 -.7-.29l-.66-.71a1 1 0 0 1 1.36-1.36l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.24z"></path></g></svg></span>
+                        <span class="moon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="m223.5 32c-123.5 0-223.5 100.3-223.5 224s100 224 223.5 224c60.6 0 115.5-24.2 155.8-63.4 5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6-96.9 0-175.5-78.8-175.5-176 0-65.8 36-123.1 89.3-153.3 6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"></path></svg></span>
+                        <input type="checkbox" class="input" id="themeToggle">
+                        <span class="slider"></span>
+                    </label>
+                    <div class="top-bar-user">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="usernameDisplay">User</span>
+                    </div>
+                    <button class="btn-logout" onclick="logoutUser()">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </header>
+
+            <!-- Insights Strip -->
+            <section class="insights-strip" id="salesInsightsSection" style="display: none;">
+                <div class="insight-card">
+                    <div class="insight-title">Most Sold Product</div>
+                    <div class="insight-value" id="mostSoldProduct">-</div>
+                    <div class="insight-meta" id="mostSoldMeta">-</div>
+                    <div class="insight-trend-wrap">
+                        <canvas id="mostProductTrendChart" class="insight-trend-chart"></canvas>
+                    </div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-title">Least Sold Product</div>
+                    <div class="insight-value" id="leastSoldProduct">-</div>
+                    <div class="insight-meta" id="leastSoldMeta">-</div>
+                    <div class="insight-trend-wrap">
+                        <canvas id="leastProductTrendChart" class="insight-trend-chart"></canvas>
+                    </div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-title">Predicted Top Future Product</div>
+                    <div class="insight-value" id="futureTopProduct">-</div>
+                    <div class="insight-meta" id="futureTopMeta">-</div>
+                    <ul class="insight-reasons" id="futureTopReasons"></ul>
+                </div>
+            </section>
+
+            <!-- Chat Workspace (main focus) -->
+            <div class="chat-workspace">
                 <div class="card chat-card">
                     <!-- Tab Toggle -->
                     <div class="tab-toggle">
@@ -145,10 +224,12 @@
                     <div class="tab-content active" id="chatTab">
                         <div class="chat-header-row">
                             <h2><i class="fas fa-robot"></i> Sales Assistant</h2>
-                            <button id="clearChatBtn" onclick="clearChat()">Clear Chat</button>
+                            <div class="chat-header-actions">
+                                <button id="clearChatBtn" onclick="clearChat()">Clear Chat</button>
+                            </div>
                         </div>
                         <p class="subtitle">Ask questions about your sales data</p>
-                        
+
                         <!-- Chat Messages -->
                         <div class="chat-messages" id="chatMessages">
                             <div class="message bot">
@@ -160,7 +241,7 @@
                                     <p>Hello! I can help you analyze your sales data.</p>
                                     <p>To get started:</p>
                                     <ol>
-                                        <li>Upload your sales data (CSV or Excel) using the left panel</li>
+                                        <li>Upload your sales data (CSV or Excel) using the sidebar</li>
                                         <li>Then ask me questions like:</li>
                                         <ul>
                                             <li>"What is our total revenue?"</li>
@@ -172,9 +253,9 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Quick Questions -->
-                        <div class="quick-questions">
+                        <div class="quick-questions" id="quickQuestions">
                             <p>Try asking:</p>
                             <div class="question-chips">
                                 <button class="chip" onclick="askQuestion('What is the total revenue?')">
@@ -191,12 +272,12 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                         <!-- Input Area -->
                         <div class="input-area">
-                            <input 
-                                type="text" 
-                                id="userInput" 
+                            <input
+                                type="text"
+                                id="userInput"
                                 placeholder="Type your question here..."
                                 onkeypress="handleKeyPress(event)"
                             >
@@ -243,15 +324,14 @@
                             <!-- Sections rendered dynamically by JS -->
                         </div>
                     </div>
-
                 </div>
             </div>
-        </div>
 
-        <!-- Footer -->
-        <footer class="footer">
-            <p>&copy;Team Abscond. 2026 <br>Simple Sales Analytics Agent • No Database Required • Uses In-Memory Storage</p>
-        </footer>
+            <!-- Footer -->
+            <footer class="footer">
+                <p>&copy;Team Abscond. 2026 <br>AI Sales Analytics &bull; Multi-User SaaS &bull; Powered by MongoDB & Gemini AI</p>
+            </footer>
+        </div>
     </div>
 
     <!-- Go to Top Button -->

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crash Reports – AI Sales Analytics</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="crashreports.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="app-layout" id="appLayout">
+
+    <!-- ===== LEFT SIDEBAR ===== -->
+    <aside class="left-sidebar" id="leftSidebar">
+
+        <div class="sidebar-brand">
+            <i class="fas fa-chart-line"></i>
+            <span>AI Sales Analytics</span>
+        </div>
+
+        <div class="sidebar-new-chat">
+            <button class="btn-new-chat" onclick="window.location.href='../app.html'">
+                <i class="fas fa-plus"></i>
+                <span>New Chat</span>
+            </button>
+        </div>
+
+        <div class="sidebar-body">
+
+            <!-- Analytics link -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-header"
+                     onclick="window.location.href='../app.html'"
+                     data-tooltip="Analytics"
+                     style="cursor:pointer;">
+                    <h3><i class="fas fa-chart-bar"></i> Analytics</h3>
+                </div>
+            </div>
+
+            <!-- Crash Reports active -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-header cr-sidebar-active" data-tooltip="Crash Reports">
+                    <h3 style="color:#e53e3e;"><i class="fas fa-bug"></i> Crash Reports</h3>
+                </div>
+            </div>
+
+            <div class="cr-sidebar-extras" style="height:1px;background:#edf2f7;margin:6px 14px;"></div>
+
+            <div class="cr-sidebar-extras" style="padding:10px 16px;">
+                <p style="font-size:11px;font-weight:700;color:#a0aec0;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Categories</p>
+                <div id="sidebarLegend"></div>
+            </div>
+
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="btn-collapse-sidebar" onclick="toggleSidebarCollapse()">
+                <span class="collapse-icon-wrap">
+                    <i class="fas fa-angles-left" id="collapseIcon"></i>
+                </span>
+                <span class="collapse-label">Collapse</span>
+            </button>
+        </div>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
+
+    <!-- ===== MAIN WORKSPACE ===== -->
+    <div class="main-workspace" id="mainWorkspace">
+
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <button class="btn-sidebar-toggle" onclick="toggleMobileSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="cr-live-badge" id="liveBadge">
+                    <div class="cr-live-dot" id="liveDot"></div>
+                    <span id="liveBadgeText">Crash Reports — Community</span>
+                </div>
+            </div>
+            <div class="top-bar-right">
+                <label class="switch" title="Toggle theme">
+                    <span class="sun"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="#ffd43b"><circle r="5" cy="12" cx="12"></circle><path d="m21 13h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm-17 0h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm13.66-5.66a1 1 0 0 1-.66-.29 1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1-.75.29zm-12.02 12.02a1 1 0 0 1-.71-.29 1 1 0 0 1 0-1.41l.71-.66a1 1 0 0 1 1.41 1.41l-.71.71a1 1 0 0 1-.7.24zm6.36-14.36a1 1 0 0 1-1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1-1 1zm0 17a1 1 0 0 1-1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1-1 1zm-5.66-14.66a1 1 0 0 1-.7-.29l-.71-.71a1 1 0 0 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1-.71.29zm12.02 12.02a1 1 0 0 1-.7-.29l-.66-.71a1 1 0 0 1 1.36-1.36l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1-.71.24z"></path></g></svg></span>
+                    <span class="moon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="m223.5 32c-123.5 0-223.5 100.3-223.5 224s100 224 223.5 224c60.6 0 115.5-24.2 155.8-63.4 5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6-96.9 0-175.5-78.8-175.5-176 0-65.8 36-123.1 89.3-153.3 6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"></path></svg></span>
+                    <input type="checkbox" class="input" id="themeToggle" onchange="toggleTheme()">
+                    <span class="slider"></span>
+                </label>
+                <div class="top-bar-user">
+                    <i class="fas fa-user-circle"></i>
+                    <span id="usernameDisplay">User</span>
+                </div>
+                <button class="btn-logout" onclick="logoutUser()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <div class="cr-workspace">
+
+            <!-- Page Header -->
+            <div class="cr-page-header">
+                <div class="cr-page-title">
+                    <div class="cr-page-icon"><i class="fas fa-bug"></i></div>
+                    <div>
+                        <h1>Crash Reports</h1>
+                        <p>Real failures. Real lessons. Build smarter together.</p>
+                    </div>
+                </div>
+                <button class="cr-btn-share" onclick="switchCrashTab('post')">
+                    <i class="fas fa-plus"></i> Share a Failure
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="cr-stats-bar">
+                <div class="cr-stat-card">
+                    <div class="cr-stat-icon red"><i class="fas fa-bomb"></i></div>
+                    <div>
+                        <div class="cr-stat-value" id="statTotal">—</div>
+                        <div class="cr-stat-label">Reports</div>
+                    </div>
+                </div>
+                <div class="cr-stat-card">
+                    <div class="cr-stat-icon indigo"><i class="fas fa-fire"></i></div>
+                    <div>
+                        <div class="cr-stat-value" id="statUpvotes">—</div>
+                        <div class="cr-stat-label">Upvotes</div>
+                    </div>
+                </div>
+                <div class="cr-stat-card">
+                    <div class="cr-stat-icon green"><i class="fas fa-hand-paper"></i></div>
+                    <div>
+                        <div class="cr-stat-value" id="statMetoo">—</div>
+                        <div class="cr-stat-label">"This happened to me"</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Toggle -->
+            <div class="cr-tab-toggle">
+                <button class="cr-tab-btn active" id="tabPostCrash" onclick="switchCrashTab('post')">
+                    <i class="fas fa-edit"></i> Post Crash
+                </button>
+                <button class="cr-tab-btn" id="tabViewCrash" onclick="switchCrashTab('view')">
+                    <i class="fas fa-stream"></i> View Crash
+                </button>
+            </div>
+
+            <!-- ===== POST CRASH SECTION ===== -->
+            <div class="cr-tab-content active" id="postCrashSection">
+
+            <!-- Compose Card -->
+            <div class="cr-compose-card" id="composeCard">
+                <h3><i class="fas fa-edit"></i> Share Your Failure Story</h3>
+
+                <label class="cr-field-label">Category <span class="cr-required">*</span></label>
+                <div class="cr-cat-pills" id="composeCatPills">
+                    <div class="cr-cat-pill selected" data-cat="pricing">💸 Pricing</div>
+                    <div class="cr-cat-pill" data-cat="prospecting">🎯 Prospecting</div>
+                    <div class="cr-cat-pill" data-cat="closing">🤝 Closing</div>
+                    <div class="cr-cat-pill" data-cat="retention">💔 Retention</div>
+                    <div class="cr-cat-pill" data-cat="operations">⚙️ Operations</div>
+                </div>
+
+                <div class="cr-form-group">
+                    <label class="cr-field-label">Title <span class="cr-required">*</span></label>
+                    <input type="text" id="postTitle" placeholder="e.g. I discounted too aggressively and lost 3 loyal clients">
+                </div>
+
+                <div class="cr-two-col">
+                    <div class="cr-form-group">
+                        <label class="cr-field-label">What Strategy Did You Try? <span class="cr-required">*</span></label>
+                        <textarea id="postStrategy" placeholder="Describe the approach you attempted..."></textarea>
+                    </div>
+                    <div class="cr-form-group">
+                        <label class="cr-field-label">What Went Wrong? <span class="cr-required">*</span></label>
+                        <textarea id="postWrong" placeholder="Be honest — what caused it to fail?"></textarea>
+                    </div>
+                </div>
+
+                <div class="cr-form-group">
+                    <label class="cr-field-label">Key Lesson / What You'd Do Differently <span class="cr-required">*</span></label>
+                    <textarea id="postLesson" style="min-height:70px;" placeholder="What would you tell your past self? This is the gold."></textarea>
+                </div>
+
+                <!-- Anonymous Toggle -->
+                <div class="cr-anon-row" id="anonToggleRow" onclick="toggleAnon()">
+                    <div class="cr-toggle-pill" id="anonPill"></div>
+                    <div class="cr-anon-info">
+                        <strong>
+                            <i class="fas fa-user-secret"></i>
+                            Post Anonymously
+                            <span class="cr-anon-badge" id="anonBadge" style="display:none;">
+                                <i class="fas fa-check"></i> ON
+                            </span>
+                        </strong>
+                        <span id="anonSubtext">Your name will be visible to others</span>
+                    </div>
+                </div>
+
+                <button class="cr-btn-submit" id="submitBtn" onclick="submitPost()">
+                    <i class="fas fa-paper-plane"></i> Post to Crash Reports
+                </button>
+            </div> <!-- /composeCard -->
+
+            </div> <!-- /postCrashSection -->
+
+            <!-- ===== VIEW CRASH SECTION ===== -->
+            <div class="cr-tab-content" id="viewCrashSection">
+
+            <!-- Filter Bar -->
+            <div class="cr-filter-bar">
+                <span>Filter:</span>
+                <div class="cr-filter-pill active" data-filter="all"        onclick="setFilter(this,'all')">All</div>
+                <div class="cr-filter-pill" data-filter="pricing"           onclick="setFilter(this,'pricing')">💸 Pricing</div>
+                <div class="cr-filter-pill" data-filter="prospecting"       onclick="setFilter(this,'prospecting')">🎯 Prospecting</div>
+                <div class="cr-filter-pill" data-filter="closing"           onclick="setFilter(this,'closing')">🤝 Closing</div>
+                <div class="cr-filter-pill" data-filter="retention"         onclick="setFilter(this,'retention')">💔 Retention</div>
+                <div class="cr-filter-pill" data-filter="operations"        onclick="setFilter(this,'operations')">⚙️ Operations</div>
+            </div>
+
+            <!-- Feed loading -->
+            <div class="cr-loading" id="feedLoading">
+                <div class="loading-wrapper">
+                    <div class="loader"><div class="loader-inner"></div></div>
+                </div>
+                <p>Loading crash reports...</p>
+            </div>
+
+            <!-- Posts Feed -->
+            <div id="postsContainer"></div>
+
+            <!-- Empty state -->
+            <div class="cr-empty" id="emptyState" style="display:none;">
+                <i class="fas fa-bug"></i>
+                <h3>No reports yet in this category</h3>
+                <p>Be the first to share a failure — your lesson could save someone else's quarter.</p>
+            </div>
+
+            </div> <!-- /viewCrashSection -->
+
+        </div>
+
+        <footer class="footer">
+            <p>&copy; Team Abscond. 2026 &bull; AI Sales Analytics &bull; Crash Reports</p>
+        </footer>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="cr-toast">
+    <i id="toastIcon" class="fas fa-check-circle"></i>
+    <span id="toastMsg"></span>
+</div>
+
+<script src="crashreports.js"></script>
+</body>
+</html>

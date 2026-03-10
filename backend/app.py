@@ -55,10 +55,93 @@ client = genai.Client(api_key=api_key)
 model_name = "gemini-2.5-flash"
 visualizer = SalesVisualizer()
 
+# ============================================================
+#  RATE LIMITER
+# ============================================================
+
+import time
+import hashlib
+import threading
+
+class GeminiRateLimiter:
+    def __init__(self, rpm=15):
+        self.rpm = rpm
+        self.requests = []
+        self.lock = threading.Lock()
+
+    def wait_if_needed(self):
+        with self.lock:
+            now = time.time()
+            self.requests = [r for r in self.requests if now - r < 60]
+            if len(self.requests) >= self.rpm:
+                sleep_time = 60 - (now - self.requests[0])
+                if sleep_time > 0:
+                    print(f"Rate limit approaching. Waiting {sleep_time:.1f}s...")
+                    time.sleep(sleep_time)
+            self.requests.append(time.time())
+
+rate_limiter = GeminiRateLimiter(rpm=14)
+
+
+# ============================================================
+#  RESPONSE CACHE
+# ============================================================
+
+_query_cache = {}
+CACHE_TTL = 300  # 5 minutes
+
+def get_cache_key(dataset_id, query):
+    return hashlib.md5(f"{dataset_id}:{query.lower().strip()}".encode()).hexdigest()
+
+def get_cached_response(dataset_id, query):
+    key = get_cache_key(dataset_id, query)
+    if key in _query_cache:
+        cached, timestamp = _query_cache[key]
+        if time.time() - timestamp < CACHE_TTL:
+            return cached
+    return None
+
+def set_cached_response(dataset_id, query, response):
+    key = get_cache_key(dataset_id, query)
+    _query_cache[key] = (response, time.time())
+
+
+# ============================================================
+#  GEMINI CALLER (retry + backoff + cache)
+# ============================================================
+
+def call_gemini(prompt, dataset_id='', query=''):
+    if dataset_id and query:
+        cached = get_cached_response(dataset_id, query)
+        if cached:
+            print("Cache hit — skipping API call")
+            return cached
+
+    for attempt in range(3):
+        try:
+            rate_limiter.wait_if_needed()
+            response = client.models.generate_content(
+                model=model_name, contents=prompt
+            )
+            result = response.text
+            if dataset_id and query:
+                set_cached_response(dataset_id, query, result)
+            return result
+        except Exception as e:
+            err = str(e).lower()
+            if '429' in err or 'quota' in err or 'rate' in err:
+                wait = (2 ** attempt) * 5
+                print(f"Rate limit hit. Waiting {wait}s (attempt {attempt + 1}/3)...")
+                time.sleep(wait)
+            else:
+                raise
+
+    return "I'm currently busy due to API limits. Please wait a moment and try again."
+
+
 # Legacy in-memory storage (fallback for anonymous/sample use)
 sales_data = []
 file_history = []
-
 COLUMN_ALIASES = {
     'revenue': [
         'revenue', 'sales', 'sale', 'sales_amount', 'sale_amount', 'amount',
@@ -375,8 +458,7 @@ Rules:
 - Exactly 3 strings
 - Each reason max 16 words
 - No markdown, no numbering"""
-        response = client.models.generate_content(model=model_name, contents=prompt)
-        text = (response.text or '').strip()
+        text = (call_gemini(prompt) or '').strip()
         import re as _re
         text = _re.sub(r'^```(?:json)?\s*', '', text)
         text = _re.sub(r'\s*```$', '', text).strip()
@@ -653,6 +735,102 @@ def upload_data():
 
 
 # ============================================================
+#  QUERY HELPERS
+# ============================================================
+
+def compute_all_aggregations(df):
+    """Run all meaningful aggregations in pandas — exact, never hallucinated."""
+    result = {}
+
+    # Convert numeric-looking columns
+    for col in df.columns:
+        converted = pd.to_numeric(
+            df[col].astype(str).str.replace(r'[$₹,]', '', regex=True),
+            errors='coerce'
+        )
+        if converted.notna().sum() > len(df) * 0.5:
+            df[col] = converted
+
+    numeric_cols = df.select_dtypes(include='number').columns.tolist()
+    categorical_cols = [c for c in df.columns if c not in numeric_cols]
+
+    # Overall stats for each numeric column
+    result['overall'] = {}
+    for col in numeric_cols:
+        result['overall'][col] = {
+            'total': round(float(df[col].sum()), 2),
+            'average': round(float(df[col].mean()), 2),
+            'max': round(float(df[col].max()), 2),
+            'min': round(float(df[col].min()), 2),
+            'count': int(df[col].count())
+        }
+
+    # Breakdowns: every categorical x every numeric
+    result['breakdowns'] = {}
+    for cat in categorical_cols:
+        unique_vals = df[cat].nunique()
+        if unique_vals < 2 or unique_vals > 100:
+            continue
+        result['breakdowns'][cat] = {}
+        for num in numeric_cols:
+            grouped = (
+                df.groupby(cat)[num]
+                .agg(['sum', 'mean', 'count'])
+                .round(2)
+                .sort_values('sum', ascending=False)
+            )
+            result['breakdowns'][cat][num] = grouped.to_dict(orient='index')
+
+    # Date-based monthly breakdown
+    date_col = next((c for c in df.columns if get_canonical_name(c) == 'date'), None)
+    if date_col:
+        df['_parsed_date'] = pd.to_datetime(df[date_col].astype(str), errors='coerce', dayfirst=True)
+        df['_month'] = df['_parsed_date'].dt.to_period('M').astype(str)
+        result['by_month'] = {}
+        for num in numeric_cols:
+            monthly = df.groupby('_month')[num].sum().round(2).to_dict()
+            result['by_month'][num] = dict(sorted(monthly.items()))
+
+    result['total_rows'] = len(df)
+    result['columns'] = list(df.columns)
+    return result
+
+
+def build_query_context(computed):
+    """Build a compact, structured context string from pre-computed aggregations."""
+    lines = []
+    lines.append(f"Total rows in dataset: {computed['total_rows']}")
+    lines.append(f"Available columns: {', '.join(computed['columns'])}")
+
+    if computed.get('overall'):
+        lines.append("\n--- OVERALL TOTALS (exact) ---")
+        for col, stats in computed['overall'].items():
+            lines.append(
+                f"  {col}: total={stats['total']:,}  avg={stats['average']:,}  "
+                f"max={stats['max']:,}  min={stats['min']:,}  count={stats['count']}"
+            )
+
+    if computed.get('breakdowns'):
+        lines.append("\n--- BREAKDOWNS BY CATEGORY (exact) ---")
+        for cat, num_breakdowns in computed['breakdowns'].items():
+            for num_col, data in num_breakdowns.items():
+                lines.append(f"\n  {num_col} grouped by '{cat}':")
+                for group, stats in list(data.items())[:50]:
+                    lines.append(
+                        f"    {group}: total={stats['sum']:,}  avg={stats['mean']:,}  count={stats['count']}"
+                    )
+
+    if computed.get('by_month'):
+        lines.append("\n--- MONTHLY TRENDS (exact) ---")
+        for col, monthly in computed['by_month'].items():
+            lines.append(f"\n  {col} by month:")
+            for month, val in monthly.items():
+                lines.append(f"    {month}: {val:,}")
+
+    return '\n'.join(lines)
+
+
+# ============================================================
 #  QUERY (Multi-user with MongoDB)
 # ============================================================
 
@@ -660,11 +838,12 @@ def upload_data():
 def handle_query():
     try:
         data = request.json
-        query = data.get('query', '').lower()
+        raw_query = data.get('query', '')
+        query = raw_query.lower()
         username = data.get('username', '').strip().lower()
         dataset_id = data.get('dataset_id', '').strip()
 
-        if not query:
+        if not raw_query:
             return jsonify({'error': 'No query provided'}), 400
 
         if username and dataset_id:
@@ -676,13 +855,53 @@ def handle_query():
 
         if data_summary['record_count'] == 0:
             return jsonify({
-                'query': query,
+                'query': raw_query,
                 'response': 'No sales data available. Please upload a CSV or Excel file first.',
                 'analysis': {'has_data': False},
                 'data_summary': data_summary,
                 'visualizations': []
             })
 
+        # ── 1. Rebuild DataFrame from records ──────────────────────────────
+        rows = [r['data'] for r in current_data if 'data' in r]
+        df = pd.DataFrame(rows)
+
+        # ── 2. Compute ALL aggregations in Python (exact math) ─────────────
+        computed = compute_all_aggregations(df)
+
+        # ── 3. Build compact structured context for AI ─────────────────────
+        context = build_query_context(computed)
+
+        # ── 4. AI only interprets pre-computed results, never calculates ───
+        prompt = f"""You are a Sales Analytics Agent. A user has asked a question about their sales data.
+
+ALL NUMBERS BELOW HAVE BEEN CALCULATED BY PYTHON — they are 100% accurate.
+Your ONLY job is to:
+1. Read the pre-computed data below
+2. Find the answer to the user's question
+3. State it directly and clearly in the first sentence
+4. Add 1-2 lines of business insight if genuinely useful
+5. NEVER recalculate, guess, or make up any number
+
+USER QUESTION: {raw_query}
+
+PRE-COMPUTED DATA FROM THE DATASET:
+{context}
+
+STRICT RULES:
+- Answer the question directly in your first sentence
+- Use ₹ for all currency/revenue values
+- Use exact numbers from the data above only
+- If the question is about something not in the data, say: "This information is not available in the uploaded dataset." and list what IS available
+- Keep response concise — no unnecessary padding
+- For "top N" questions, list them ranked by the relevant metric
+- For "compare" questions, show both values side by side
+
+YOUR ANSWER:"""
+
+        ai_response = call_gemini(prompt, dataset_id=dataset_id, query=raw_query)
+
+        # ── 5. Visualizations ──────────────────────────────────────────────
         visualization_keywords = ['chart', 'graph', 'plot', 'visualize', 'diagram',
                                   'trend', 'bar', 'pie', 'histogram', 'scatter']
         needs_visualization = any(kw in query for kw in visualization_keywords)
@@ -690,136 +909,18 @@ def handle_query():
         if needs_visualization and len(current_data) > 0:
             charts = visualizer.generate_all_charts(current_data)
 
-        full_data_text = ""
-        if current_data:
-            max_records = min(len(current_data), 200)
-            for i, record in enumerate(current_data[:max_records]):
-                if 'data' in record:
-                    full_data_text += f"Row {i+1}: {json.dumps(record['data'])}\n"
-            if len(current_data) > max_records:
-                full_data_text += f"\n[Note: Showing first {max_records} of {len(current_data)} total records]\n"
-
-        precomputed = ""
-        if data_summary['metrics_available']['revenue']:
-            precomputed += f"\n• Total Revenue (pre-computed, verified): ₹{data_summary['total_revenue']:,.2f}"
-            precomputed += f"\n• Average Revenue per record: ₹{data_summary['avg_revenue']:,.2f}"
-            precomputed += f"\n• Number of records: {data_summary['record_count']}"
-
-        region_rev = {}
-        product_rev = {}
-        for record in current_data:
-            if 'data' not in record:
-                continue
-            d = record['data']
-            rev_key = first_matching_key(d, 'revenue')
-            rev_val = to_float(d.get(rev_key)) if rev_key else None
-            if rev_val is None:
-                p_key = first_matching_key(d, 'price')
-                q_key = first_matching_key(d, 'quantity')
-                if p_key and q_key:
-                    pv, qv = to_float(d.get(p_key)), to_float(d.get(q_key))
-                    if pv is not None and qv is not None:
-                        rev_val = pv * qv
-            if rev_val is None:
-                continue
-            r_key = first_matching_key(d, 'region')
-            if r_key:
-                region_rev[str(d[r_key]).strip()] = region_rev.get(str(d[r_key]).strip(), 0) + rev_val
-            pr_key = first_matching_key(d, 'product')
-            if pr_key:
-                product_rev[str(d[pr_key]).strip()] = product_rev.get(str(d[pr_key]).strip(), 0) + rev_val
-
-        if region_rev:
-            precomputed += "\n\n• Revenue by Region (pre-computed):"
-            for rg, rv in sorted(region_rev.items(), key=lambda x: -x[1]):
-                precomputed += f"\n  - {rg}: ₹{rv:,.2f}"
-        if product_rev:
-            precomputed += "\n\n• Revenue by Product (pre-computed):"
-            for pr, rv in sorted(product_rev.items(), key=lambda x: -x[1]):
-                precomputed += f"\n  - {pr}: ₹{rv:,.2f}"
-
-        skip_canonical = {'revenue', 'price', 'quantity', 'date', 'region', 'product'}
-        extra_breakdowns = {}
-        for record in current_data:
-            if 'data' not in record:
-                continue
-            d = record['data']
-            rev_key = first_matching_key(d, 'revenue')
-            rev_val = to_float(d.get(rev_key)) if rev_key else None
-            if rev_val is None:
-                p_key = first_matching_key(d, 'price')
-                q_key = first_matching_key(d, 'quantity')
-                if p_key and q_key:
-                    pv, qv = to_float(d.get(p_key)), to_float(d.get(q_key))
-                    if pv is not None and qv is not None:
-                        rev_val = pv * qv
-            if rev_val is None:
-                continue
-            for col_name, col_value in d.items():
-                # For deduplicated columns like "region_1", check the canonical
-                # of the full name, not a stripped version
-                col_canonical = get_canonical_name(col_name)
-                if col_canonical in skip_canonical:
-                    continue
-                str_val = str(col_value).strip()
-                if not str_val or str_val.lower() == 'nan':
-                    continue
-                if to_float(str_val) is not None and col_canonical not in ('region',):
-                    continue
-                if col_name not in extra_breakdowns:
-                    extra_breakdowns[col_name] = {}
-                extra_breakdowns[col_name][str_val] = extra_breakdowns[col_name].get(str_val, 0) + rev_val
-
-        for col_name, breakdown in extra_breakdowns.items():
-            if len(breakdown) < 2 or len(breakdown) > 50:
-                continue
-            label = col_name.replace('_', ' ').title()
-            precomputed += f"\n\n• Revenue by {label} (pre-computed):"
-            for name, rev in sorted(breakdown.items(), key=lambda x: -x[1]):
-                precomputed += f"\n  - {name}: ₹{rev:,.2f}"
-
-        prompt = f"""You are a Sales Analytics Agent.
-
-CRITICAL: You MUST ONLY use the EXACT data provided below.
-
-ABSOLUTE RULES:
-1. ONLY use data from the "COMPLETE DATASET" section below
-2. DO NOT invent, assume, estimate, or hallucinate ANY values
-3. If information is truly not present in ANY column of the dataset, respond: "This information is not available in the uploaded data."
-4. Every number you mention MUST be traceable to the dataset below
-5. Use Indian Rupee (₹) for all revenue/currency values
-6. For overall totals/averages: use the PRE-COMPUTED VALUES directly
-7. For filtered or cross-dimensional queries (e.g. "sales of X by Y", "total of A where B = C"), you MUST calculate by scanning the COMPLETE DATASET rows below and summing/filtering the relevant values
-8. Cross-reference multiple columns as needed to answer the question — the dataset has many columns beyond the pre-computed ones
-9. When the user asks about a specific subset (e.g. a specific district/region, payment mode, product line), iterate through the rows, filter matches, and compute the answer
-
-PRE-COMPUTED VERIFIED METRICS (use for overall totals):
-{precomputed}
-
-COMPLETE DATASET ({data_summary['record_count']} records):
-{full_data_text}
-
-DATASET COLUMNS: {', '.join(data_summary['columns'])}
-
-USER QUESTION: {query}
-
-AVAILABLE VISUALIZATIONS: {list(charts.keys()) if charts else 'None generated'}
-
-YOUR ANSWER (using ONLY the data above — scan rows for filtered/cross-dimensional queries):"""
-
-        response = client.models.generate_content(model=model_name, contents=prompt)
-        ai_response = response.text
-
-        # Save chat to MongoDB
+        # ── 6. Save chat to MongoDB ────────────────────────────────────────
         if username and dataset_id:
             chats_collection.insert_one({
-                "username": username, "dataset_id": dataset_id,
-                "query": query, "response": ai_response,
+                "username": username,
+                "dataset_id": dataset_id,
+                "query": raw_query,
+                "response": ai_response,
                 "timestamp": datetime.now().isoformat()
             })
 
         return jsonify({
-            'query': query,
+            'query': raw_query,
             'response': ai_response,
             'analysis': {
                 'has_data': True,
@@ -832,7 +933,10 @@ YOUR ANSWER (using ONLY the data above — scan rows for filtered/cross-dimensio
                 'total_revenue': data_summary['total_revenue'],
                 'regions_count': len(data_summary['regions']),
                 'products_count': len(data_summary['products']),
-                'revenue': {'total': data_summary['total_revenue'], 'average': data_summary['avg_revenue']},
+                'revenue': {
+                    'total': data_summary['total_revenue'],
+                    'average': data_summary['avg_revenue']
+                },
                 'categories': {
                     'regions': data_summary['regions'],
                     'products': data_summary['products'],
@@ -841,24 +945,41 @@ YOUR ANSWER (using ONLY the data above — scan rows for filtered/cross-dimensio
                 'metrics_available': data_summary['metrics_available'],
                 'product_insights': get_product_insights(current_data),
                 'dynamic_stats': [
-                    {'id': 'records', 'label': 'Records', 'value': data_summary['record_count'], 'type': 'count'},
-                    {'id': 'revenue', 'label': 'Revenue',
-                     'value': data_summary['total_revenue'] if data_summary['metrics_available']['revenue'] else None,
-                     'type': 'currency', 'available': data_summary['metrics_available']['revenue']},
-                    {'id': 'regions', 'label': data_summary.get('region_label', 'Regions'),
-                     'value': len(data_summary['regions']) if data_summary['metrics_available']['region'] else None,
-                     'type': 'count', 'available': data_summary['metrics_available']['region']},
-                    {'id': 'products', 'label': data_summary.get('product_label', 'Products'),
-                     'value': len(data_summary['products']) if data_summary['metrics_available']['product'] else None,
-                     'type': 'count', 'available': data_summary['metrics_available']['product']}
+                    {
+                        'id': 'records',
+                        'label': 'Records',
+                        'value': data_summary['record_count'],
+                        'type': 'count'
+                    },
+                    {
+                        'id': 'revenue',
+                        'label': 'Revenue',
+                        'value': data_summary['total_revenue'] if data_summary['metrics_available']['revenue'] else None,
+                        'type': 'currency',
+                        'available': data_summary['metrics_available']['revenue']
+                    },
+                    {
+                        'id': 'regions',
+                        'label': data_summary.get('region_label', 'Regions'),
+                        'value': len(data_summary['regions']) if data_summary['metrics_available']['region'] else None,
+                        'type': 'count',
+                        'available': data_summary['metrics_available']['region']
+                    },
+                    {
+                        'id': 'products',
+                        'label': data_summary.get('product_label', 'Products'),
+                        'value': len(data_summary['products']) if data_summary['metrics_available']['product'] else None,
+                        'type': 'count',
+                        'available': data_summary['metrics_available']['product']
+                    }
                 ]
             },
             'visualizations': charts
         })
+
     except Exception as e:
         print(f"Query error: {str(e)}")
         return jsonify({'error': f'AI service error: {str(e)}'}), 500
-
 
 # ============================================================
 #  USER DATASETS
@@ -1115,8 +1236,7 @@ JSON FORMAT:
   "improvements": {{"title": "Sales Improvement Recommendations", "items": [{{"label": "improvement", "detail": "recommendation", "impact": "High|Medium|Low", "category": "pricing|marketing|product|distribution|customer", "expected_boost": "estimated improvement"}}]}}
 }}"""
 
-        response = client.models.generate_content(model=model_name, contents=prompt)
-        text = (response.text or '').strip()
+        text = (call_gemini(prompt) or '').strip()
         import re as _re
         text = _re.sub(r'^```(?:json)?\s*', '', text)
         text = _re.sub(r'\s*```$', '', text).strip()
@@ -1230,6 +1350,138 @@ def health_check():
         'data_records': len(sales_data),
         'files_uploaded': len(file_history)
     })
+
+
+# ============================================================
+#  CRASH REPORTS API
+# ============================================================
+
+crashreports_collection = db["crashreports"]
+crashreports_collection.create_index([("created_at", -1)])
+
+
+@app.route('/api/crashreports/posts', methods=['GET'])
+def get_crashreport_posts():
+    try:
+        posts = list(
+            crashreports_collection.find({}, {'_id': 0}).sort("created_at", -1)
+        )
+        return jsonify({'posts': posts})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/crashreports/posts', methods=['POST'])
+def create_crashreport_post():
+    try:
+        data = request.get_json()
+        required = ['title', 'strategy', 'wrong', 'lesson', 'category', 'username']
+        for field in required:
+            if not str(data.get(field, '')).strip():
+                return jsonify({'error': f'Missing field: {field}'}), 400
+
+        post = {
+            'post_id':   'cr_' + str(int(datetime.now().timestamp() * 1000)),
+            'username':  data['username'].strip(),
+            'author':    'Anonymous' if data.get('anon') else data['username'].strip(),
+            'anon':      bool(data.get('anon', False)),
+            'category':  data['category'].strip(),
+            'title':     data['title'].strip(),
+            'strategy':  data['strategy'].strip(),
+            'wrong':     data['wrong'].strip(),
+            'lesson':    data['lesson'].strip(),
+            'upvotes':   0,
+            'metoo':     0,
+            'bookmarks': 0,
+            'created_at': datetime.now().isoformat()
+        }
+        crashreports_collection.insert_one(post)
+        post.pop('_id', None)
+        return jsonify({'message': 'Crash report created', 'post': post}), 201
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/crashreports/posts/<post_id>/react', methods=['POST'])
+def react_crashreport_post(post_id):
+    try:
+        data     = request.get_json()
+        reaction = data.get('reaction')
+        action   = data.get('action')
+
+        if reaction not in ('upvotes', 'metoo', 'bookmarks'):
+            return jsonify({'error': 'Invalid reaction'}), 400
+
+        delta = 1 if action == 'add' else -1
+        crashreports_collection.update_one(
+            {'post_id': post_id},
+            {'$inc': {reaction: delta}}
+        )
+        post = crashreports_collection.find_one({'post_id': post_id}, {'_id': 0})
+        return jsonify({'post': post})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/crashreports/posts/<post_id>', methods=['DELETE'])
+def delete_crashreport_post(post_id):
+    try:
+        username = request.args.get('username', '').strip()
+        if not username:
+            return jsonify({'error': 'Username required'}), 400
+
+        post = crashreports_collection.find_one({'post_id': post_id}, {'_id': 0})
+        if not post:
+            return jsonify({'error': 'Post not found'}), 404
+
+        if post.get('username') != username:
+            return jsonify({'error': 'You can only delete your own posts'}), 403
+
+        crashreports_collection.delete_one({'post_id': post_id})
+        return jsonify({'message': 'Post deleted'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/crashreports/posts/<post_id>/comments', methods=['GET'])
+def get_crashreport_comments(post_id):
+    try:
+        post = crashreports_collection.find_one({'post_id': post_id}, {'_id': 0})
+        if not post:
+            return jsonify({'error': 'Post not found'}), 404
+        return jsonify({'comments': post.get('comments', [])})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/crashreports/posts/<post_id>/comments', methods=['POST'])
+def add_crashreport_comment(post_id):
+    try:
+        data = request.get_json()
+        username = data.get('username', '').strip()
+        text = data.get('text', '').strip()
+
+        if not username or not text:
+            return jsonify({'error': 'Username and text required'}), 400
+
+        comment = {
+            'comment_id': 'cc_' + str(int(datetime.now().timestamp() * 1000)),
+            'username': username,
+            'text': text,
+            'created_at': datetime.now().isoformat()
+        }
+
+        crashreports_collection.update_one(
+            {'post_id': post_id},
+            {'$push': {'comments': comment}}
+        )
+        return jsonify({'comment': comment}), 201
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == "__main__":

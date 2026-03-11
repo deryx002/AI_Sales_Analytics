@@ -562,7 +562,7 @@ async function loadSampleFiles() {
         data.samples.forEach(file => {
             const item = document.createElement('div');
             item.className = 'sample-item';
-            item.onclick = () => loadSampleData(file.name, item);
+            item.dataset.filename = file.name;
             item.innerHTML = `
                 <div class="sample-item-info">
                     <i class="fas fa-file-csv"></i>
@@ -583,8 +583,10 @@ async function loadSampleFiles() {
 }
 
 let _sampleLoadInProgress = false;
+let _loadedSampleFilename = null;
+
 async function loadSampleData(filename, itemEl) {
-    if (_sampleLoadInProgress) return; // prevent double-click
+    if (_sampleLoadInProgress) return;
     _sampleLoadInProgress = true;
     const btn = itemEl.querySelector('.sample-load-btn');
     const originalHTML = btn.innerHTML;
@@ -592,7 +594,6 @@ async function loadSampleData(filename, itemEl) {
     btn.disabled = true;
 
     try {
-        // Pass username so sample data is saved to user's account
         let url = `${API_BASE_URL}/samples/${encodeURIComponent(filename)}`;
         if (currentUsername) {
             url += `?username=${encodeURIComponent(currentUsername)}`;
@@ -601,10 +602,23 @@ async function loadSampleData(filename, itemEl) {
         const result = await response.json();
 
         if (response.ok) {
-            btn.innerHTML = '<i class="fas fa-check"></i> Loaded';
-            btn.style.background = '#48bb78';
+            _loadedSampleFilename = filename;
 
-            // If server returned a dataset_id, set it as current
+            // Mark this item as loaded and show Unload button
+            btn.innerHTML = '<i class="fas fa-times-circle"></i> Unload';
+            btn.style.background = '#e53e3e';
+            btn.disabled = false;
+            btn.onclick = (e) => { e.stopPropagation(); unloadSampleData(filename, itemEl); };
+            itemEl.classList.add('sample-loaded');
+
+            // Disable other sample items' Load buttons
+            document.querySelectorAll('.sample-item').forEach(otherItem => {
+                if (otherItem !== itemEl) {
+                    const otherBtn = otherItem.querySelector('.sample-load-btn');
+                    if (otherBtn) otherBtn.disabled = true;
+                }
+            });
+
             if (result.dataset_id) {
                 currentDatasetId = result.dataset_id;
                 await loadUserDatasets();
@@ -622,6 +636,61 @@ async function loadSampleData(filename, itemEl) {
         btn.innerHTML = '<i class="fas fa-times"></i> Error';
         btn.style.background = '#f56565';
         setTimeout(() => { btn.innerHTML = originalHTML; btn.style.background = ''; btn.disabled = false; }, 2000);
+    } finally {
+        _sampleLoadInProgress = false;
+    }
+}
+
+async function unloadSampleData(filename, itemEl) {
+    if (_sampleLoadInProgress) return;
+    _sampleLoadInProgress = true;
+    const btn = itemEl.querySelector('.sample-load-btn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Unloading...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/clear`, { method: 'POST' });
+
+        if (response.ok) {
+            _loadedSampleFilename = null;
+            currentDatasetId = '';
+            if (datasetSelector) datasetSelector.value = '';
+
+            // Reset stats
+            updateStatsDisplay({
+                total_records: 0,
+                revenue: { total: 0 },
+                categories: { regions: [], products: [] },
+                dynamic_stats: [
+                    { id: 'records', label: 'Records', value: 0, type: 'count' },
+                    { id: 'revenue', label: 'Revenue', value: null, type: 'currency', available: false },
+                    { id: 'regions', label: 'Regions', value: null, type: 'count', available: false },
+                    { id: 'products', label: 'Products', value: null, type: 'count', available: false }
+                ]
+            });
+            renderProductInsights(null);
+
+            // Reset all sample items back to Load state
+            document.querySelectorAll('.sample-item').forEach(item => {
+                item.classList.remove('sample-loaded');
+                const itemBtn = item.querySelector('.sample-load-btn');
+                const itemFilename = item.dataset.filename;
+                if (itemBtn) {
+                    itemBtn.innerHTML = '<i class="fas fa-play"></i> Load';
+                    itemBtn.style.background = '';
+                    itemBtn.disabled = false;
+                    itemBtn.onclick = (e) => { e.stopPropagation(); loadSampleData(itemFilename, item); };
+                }
+            });
+
+            addMessage(`Sample file "${filename}" has been unloaded. You can now load a different dataset.`, 'bot');
+            await loadUserDatasets();
+        }
+    } catch (error) {
+        console.error('Error unloading sample data:', error);
+        btn.innerHTML = '<i class="fas fa-times-circle"></i> Unload';
+        btn.style.background = '#e53e3e';
+        btn.disabled = false;
     } finally {
         _sampleLoadInProgress = false;
     }

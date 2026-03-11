@@ -779,6 +779,15 @@ body {
     box-shadow: none;
 }
 
+.sample-loaded {
+    border-color: #48bb78;
+    background: rgba(72, 187, 120, 0.06);
+}
+
+.sample-loaded .sample-load-btn:hover {
+    box-shadow: 0 3px 10px rgba(229, 62, 62, 0.3);
+}
+
 .sample-loading {
     font-size: 13px;
     color: #a0aec0;
@@ -1507,6 +1516,11 @@ body.dark-theme {
 .dark-theme .sample-item:hover {
     border-color: #4a6cf7;
     box-shadow: 0 2px 8px rgba(74, 108, 247, 0.25);
+}
+
+.dark-theme .sample-loaded {
+    border-color: #48bb78;
+    background: rgba(72, 187, 120, 0.1);
 }
 
 .dark-theme .sample-item-name {

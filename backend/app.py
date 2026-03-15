@@ -1025,11 +1025,41 @@ def detect_query_intent(query, df):
             for val in unique_vals:
                 if token == val.lower() or token in val.lower().split():
                     return val
-        # Try multi-word match
+        # Try multi-word match (use word boundary to prevent substring false positives)
         for val in unique_vals:
-            if val.lower() in q:
+            if len(val) < 2:
+                continue  # Skip single-character values in multi-word match
+            if _re.search(r'\b' + _re.escape(val.lower()) + r'\b', q):
                 return val
         return None
+
+    # ── Pattern 0: "<numeric> by <filter_value> in/across <category>"
+    # e.g., "total tax paid by upi in all regions", "revenue by cash in all products"
+    # This is a filtered grouped aggregation — must be checked BEFORE simpler patterns
+    by_patterns = ['by', 'per', 'for each', 'grouped by', 'across']
+    has_by = any(p in q for p in by_patterns)
+    if has_by:
+        num_found = [c for c in matched_cols if c in numeric_cols]
+        cat_found = [c for c in matched_cols if c in categorical_cols]
+        if num_found and len(cat_found) >= 1:
+            # Check if there's a filter value from any categorical column
+            for cat in categorical_cols:
+                fv = find_filter_value(cat)
+                if fv:
+                    # Find a group-by column that is different from the filter column
+                    group_col = None
+                    for gc in cat_found:
+                        if gc != cat:
+                            group_col = gc
+                            break
+                    if group_col:
+                        return {
+                            'type': 'filtered_grouped_aggregation',
+                            'column': num_found[0],
+                            'filter_column': cat,
+                            'filter_value': fv,
+                            'group_by': group_col,
+                        }
 
     # ── Pattern 1: "<column> in <value>" → category filter
     # e.g., "payment in coimbatore", "products in chennai"
@@ -1062,8 +1092,6 @@ def detect_query_intent(query, df):
 
     # ── Pattern 3: "<numeric> by <category>" → grouped aggregation
     # e.g., "revenue by region", "quantity by product"
-    by_patterns = ['by', 'per', 'for each', 'grouped by', 'across']
-    has_by = any(p in q for p in by_patterns)
     if has_by and len(matched_cols) >= 2:
         num_found = [c for c in matched_cols if c in numeric_cols]
         cat_found = [c for c in matched_cols if c in categorical_cols]
@@ -1128,7 +1156,7 @@ def execute_intent(intent, df):
     # ── Helpers for smart formatting ───────────────────────────────────
     _CURRENCY_CANONICALS = {'revenue', 'price', 'total', 'amount', 'cost',
                             'income', 'sales', 'gross', 'net', 'profit'}
-    _SKIP_SUM_PATTERNS = {'id', 'rating', 'tax', 'discount', 'zip', 'pin',
+    _SKIP_SUM_PATTERNS = {'id', 'rating', 'zip', 'pin',
                           'code', 'phone', 'mobile', 'year', 'month', 'day'}
 
     def _is_currency_col(col):
@@ -1162,7 +1190,29 @@ def execute_intent(intent, df):
         return _original_column_map.get(col, col)
 
     try:
-        if itype == 'category_filter':
+        if itype == 'filtered_grouped_aggregation':
+            col = intent['column']
+            fcol = intent['filter_column']
+            fval = intent['filter_value']
+            grp = intent['group_by']
+            mask = df[fcol].astype(str).str.lower() == fval.lower()
+            subset = df.loc[mask]
+            if subset.empty:
+                return None, None
+            grouped = subset.groupby(grp)[col].agg(['sum', 'mean', 'count']).round(2)
+            grouped = grouped.sort_values('sum', ascending=False)
+            lines = [f"**{_col_label(col)} by {_col_label(grp)} where {_col_label(fcol)} = {fval.title()}:**\n"]
+            data_rows = []
+            for idx, row in grouped.iterrows():
+                total_str = _fmt_value(col, row['sum'])
+                avg_str = _fmt_value(col, row['mean'])
+                lines.append(f"- {idx}: Total={total_str}, Avg={avg_str}, Count={int(row['count'])}")
+                data_rows.append({grp: idx, 'total': row['sum'], 'average': row['mean'], 'count': int(row['count'])})
+            grand_total = grouped['sum'].sum()
+            lines.append(f"\nGrand Total: {_fmt_value(col, grand_total)}")
+            return '\n'.join(lines), {'intent': intent, 'results': data_rows}
+
+        elif itype == 'category_filter':
             col = intent['column']
             fcol = intent['filter_column']
             fval = intent['filter_value']
@@ -1303,6 +1353,34 @@ def handle_query():
         if ai_response is None:
             context = build_query_context(computed)
 
+            # Fetch recent conversation history for cross-question context
+            chat_history_text = ""
+            if username and dataset_id:
+                try:
+                    recent_chats = list(chats_collection.find(
+                        {"username": username, "dataset_id": dataset_id},
+                        {"_id": 0, "query": 1, "response": 1}
+                    ).sort("timestamp", -1).limit(5))
+                    recent_chats.reverse()  # chronological order
+                    if recent_chats:
+                        history_lines = []
+                        for chat in recent_chats:
+                            history_lines.append(f"User: {chat.get('query', '')}")
+                            resp = chat.get('response', '')
+                            if len(resp) > 300:
+                                resp = resp[:300] + '...'
+                            history_lines.append(f"Assistant: {resp}")
+                        chat_history_text = "\n".join(history_lines)
+                except Exception as e:
+                    print(f"Error fetching chat history: {e}")
+
+            history_block = ""
+            if chat_history_text:
+                history_block = f"""
+RECENT CONVERSATION HISTORY (use this to understand follow-up/cross questions):
+{chat_history_text}
+"""
+
             prompt = f"""You are a Sales Analytics Agent. A user has asked a question about their sales data.
 
 ALL NUMBERS BELOW HAVE BEEN CALCULATED BY PYTHON — they are 100% accurate.
@@ -1312,7 +1390,7 @@ Your ONLY job is to:
 3. State it directly and clearly in the first sentence
 4. Add 1-2 lines of business insight if genuinely useful
 5. NEVER recalculate, guess, or make up any number
-
+{history_block}
 USER QUESTION: {raw_query}
 
 PRE-COMPUTED DATA FROM THE DATASET:
@@ -1322,6 +1400,7 @@ STRICT RULES:
 - Answer the question directly in your first sentence
 - Use ₹ for all currency/revenue values
 - Use exact numbers from the data above only
+- If the user's question references a previous question or answer, use the conversation history above to understand what they are referring to
 - If the question is about something not in the data, say: "This information is not available in the uploaded dataset." and list what IS available
 - Keep response concise — no unnecessary padding
 - For "top N" questions, list them ranked by the relevant metric

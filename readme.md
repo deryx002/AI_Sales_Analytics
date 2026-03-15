@@ -20,13 +20,27 @@ The system automatically generates:
 
 ---
 
+# 🌐 Live Demo
+
+### Deployment Link
+https://salesaiagent-five.vercel.app
+
+### Login Credentials
+
+```
+Username: user
+Password: user123
+```
+
+---
+
 # 🧠 Problem Statement
 
 Businesses collect large amounts of sales data in **CSV or Excel files**, but extracting meaningful insights from these datasets often requires:
 
-- Data analysts
-- Complex tools
-- Time-consuming manual analysis
+- Data analysts  
+- Complex analytics tools  
+- Time-consuming manual analysis  
 
 Traditional analytics tools like **Excel, Tableau, and Power BI** require technical skills to build dashboards.
 
@@ -51,11 +65,12 @@ This removes the need for manual analysis and makes **data-driven decision makin
 # ⭐ Key Features
 
 ## 📂 Dataset Upload
+
 Users can upload sales datasets in:
 
-- CSV
-- Excel (.xlsx)
-- Excel (.xls)
+- CSV  
+- Excel (.xlsx)  
+- Excel (.xls)  
 
 The system automatically processes and standardizes the data.
 
@@ -65,10 +80,10 @@ The system automatically processes and standardizes the data.
 
 The backend performs:
 
-- Column normalization
-- Data cleaning
-- Revenue calculation
-- Structured data transformation
+- Column normalization  
+- Data cleaning  
+- Revenue calculation  
+- Structured data transformation  
 
 Powered by **Pandas**.
 
@@ -78,9 +93,9 @@ Powered by **Pandas**.
 
 Users can ask questions like:
 
-What is the total revenue?  
-Which region has the highest sales?  
-Show product performance.
+- What is the total revenue?  
+- Which region has the highest sales?  
+- Show product performance  
 
 The AI analyzes the dataset and provides accurate insights.
 
@@ -92,16 +107,16 @@ Powered by **Google Gemini AI**.
 
 The platform automatically generates charts including:
 
-- Revenue trends
-- Regional sales comparison
-- Product performance charts
-- Monthly revenue trends
-- Sales distribution
+- Revenue trends  
+- Regional sales comparison  
+- Product performance charts  
+- Monthly revenue trends  
+- Sales distribution  
 
 Charts are generated using:
 
-- Matplotlib
-- Seaborn
+- Matplotlib  
+- Seaborn  
 
 ---
 
@@ -109,8 +124,8 @@ Charts are generated using:
 
 The system analyzes historical trends and predicts:
 
-- Future top-performing products
-- Sales growth patterns
+- Future top-performing products  
+- Sales growth patterns  
 
 AI also explains **why a prediction is made**.
 
@@ -122,15 +137,60 @@ Datasets and user interactions are stored in **MongoDB Atlas**.
 
 This enables:
 
-- Persistent storage
-- Multi-user capability
-- Dataset management
-- Chat history tracking
+- Persistent storage  
+- Multi-user capability  
+- Dataset management  
+- Chat history tracking  
+
+---
+
+# 🖼 Application Screenshots
+
+## Landing Page
+
+<img src="screenshots/landing.png" width="900">
+
+---
+
+## Login Page
+
+<img src="screenshots/login_page.png" width="900">
+
+---
+
+## Dashboard
+
+<img src="screenshots/dashboard.png" width="900">
+
+---
+
+## Dataset Loaded
+
+<img src="screenshots/dataset_loaded.png" width="900">
+
+---
+
+## Charts / Data Visualization
+
+<img src="screenshots/charts.png" width="900">
+
+---
+
+## Sales Predictions
+
+<img src="screenshots/predictions.png" width="900">
+
+---
+
+## Crash Handling
+
+<img src="screenshots/view_crash.png" width="900">
 
 ---
 
 # 🏗 System Architecture
 
+```
 User Interface (HTML / JS)
         │
         ▼
@@ -142,6 +202,7 @@ Flask Backend API
         │
         ▼
 MongoDB Atlas Database
+```
 
 ---
 
@@ -151,15 +212,18 @@ Database: **sales_ai**
 
 Collections:
 
+```
 sales_ai
 │
 ├── datasets
 ├── users
 ├── chats
 └── files
+```
 
 Example dataset document:
 
+```
 {
   "dataset_id": "ds_1772980601687",
   "username": "dharun",
@@ -169,32 +233,38 @@ Example dataset document:
     { "product": "Laptop", "region": "North", "revenue": 20000 }
   ]
 }
+```
 
 ---
 
 # ⚙️ Technology Stack
 
 ## Backend
-- Python
-- Flask
-- Flask-CORS
-- Pandas
-- NumPy
+
+- Python  
+- Flask  
+- Flask-CORS  
+- Pandas  
+- NumPy  
 
 ## AI
-- Google Gemini API
+
+- Google Gemini API  
 
 ## Visualization
-- Matplotlib
-- Seaborn
+
+- Matplotlib  
+- Seaborn  
 
 ## Database
-- MongoDB Atlas
+
+- MongoDB Atlas  
 
 ## Frontend
-- HTML
-- CSS
-- JavaScript
+
+- HTML  
+- CSS  
+- JavaScript  
 
 ---
 
@@ -202,15 +272,21 @@ Example dataset document:
 
 Clone the repository
 
+```bash
 git clone https://github.com/deryx002/ai-sales-analytics-agent.git
+```
 
-Navigate to project
+Navigate to the project folder
 
+```bash
 cd ai-sales-analytics-agent
+```
 
 Install dependencies
 
+```bash
 pip install -r requirements.txt
+```
 
 ---
 
@@ -220,8 +296,10 @@ Create a `.env` file in the project root.
 
 Example:
 
-MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority  
+```
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
 GOOGLE_API_KEY=your_google_api_key
+```
 
 ---
 
@@ -229,29 +307,35 @@ GOOGLE_API_KEY=your_google_api_key
 
 Start the backend server:
 
+```bash
 python app.py
+```
 
 Server will run on:
 
+```
 http://localhost:5000
+```
 
 ---
 
 # 📊 Example Workflow
 
-Upload Dataset  
-      │  
-      ▼  
-Data Processing  
-      │  
-      ▼  
-Ask AI Questions  
-      │  
-      ▼  
-Insights + Charts  
-      │  
-      ▼  
-Predictions  
+```
+Upload Dataset
+      │
+      ▼
+Data Processing
+      │
+      ▼
+Ask AI Questions
+      │
+      ▼
+Insights + Charts
+      │
+      ▼
+Predictions
+```
 
 ---
 
@@ -263,10 +347,10 @@ Users interact with their dataset like they are **talking to a human analyst**.
 
 This combines:
 
-- AI assistant
-- Business intelligence
-- Data visualization
-- Sales forecasting
+- AI assistant  
+- Business intelligence  
+- Data visualization  
+- Sales forecasting  
 
 into one intelligent platform.
 
@@ -276,17 +360,14 @@ into one intelligent platform.
 
 Possible improvements include:
 
-- Multi-user authentication
-- Dataset workspace management
-- Dashboard sharing
-- Automated business recommendations
-- Real-time analytics
+- Multi-user authentication  
+- Dataset workspace management  
+- Dashboard sharing  
+- Automated business recommendations  
+- Real-time analytics  
 
 ---
 
 # 👥 Team
 
 Developed by a **team of five members** as part of an AI-driven analytics system project.
-
----
-
